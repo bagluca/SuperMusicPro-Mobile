@@ -10,6 +10,7 @@ import android.content.Intent;
 import android.content.pm.ServiceInfo;
 import android.graphics.Bitmap;
 import android.graphics.BitmapFactory;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.os.Handler;
@@ -68,6 +69,9 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
 
     public static final String MEDIA_ROOT_ID = "supermusic_root_id";
     public static final String MEDIA_ID_NOW_PLAYING = "supermusic_now_playing";
+    public static final String MEDIA_ID_TRENDING = "supermusic_cat_trending";
+    public static final String MEDIA_ID_GENRES = "supermusic_cat_genres";
+    public static final String MEDIA_ID_SEARCH = "supermusic_cat_search";
     public static final String MEDIA_ID_LOCAL = "supermusic_local_library";
 
     public static final String CHANNEL_ID = "supermusic_media_channel";
@@ -257,7 +261,8 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
 
             exoPlayer = new ExoPlayer.Builder(this)
                     .setMediaSourceFactory(new DefaultMediaSourceFactory(resolvingDataSourceFactory, extractorsFactory))
-                    .setAudioAttributes(audioAttributes, false)
+                    .setAudioAttributes(audioAttributes, true)
+                    .setHandleAudioBecomingNoisy(true)
                     .setWakeMode(C.WAKE_MODE_NETWORK)
                     .build();
 
@@ -365,11 +370,24 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                 @Override
                 public void onPlayFromMediaId(String mediaId, Bundle extras) {
                     Log.d(TAG, "Android Auto onPlayFromMediaId: " + mediaId);
+                    if (mediaId == null) return;
                     if (MEDIA_ID_NOW_PLAYING.equals(mediaId)) {
                         if (exoPlayer != null) exoPlayer.play();
+                    } else if (mediaId.startsWith("track:")) {
+                        playAndroidAutoTrack(mediaId);
                     } else if (MEDIA_ID_LOCAL.equals(mediaId)) {
                         MusicNotificationPlugin.dispatchMediaAction("play_local");
                     }
+                }
+
+                @Override
+                public void onPlayFromSearch(String query, Bundle extras) {
+                    Log.d(TAG, "Android Auto onPlayFromSearch: " + query);
+                    if (query == null || query.trim().isEmpty()) {
+                        if (exoPlayer != null) exoPlayer.play();
+                        return;
+                    }
+                    playAndroidAutoSearch(query);
                 }
             });
         } catch (Exception e) {
@@ -974,7 +992,9 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                     PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
                     PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
                     PlaybackStateCompat.ACTION_SEEK_TO |
-                    PlaybackStateCompat.ACTION_STOP;
+                    PlaybackStateCompat.ACTION_STOP |
+                    PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID |
+                    PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH;
 
             long currentPositionMs = exoPlayer != null ? exoPlayer.getCurrentPosition() : PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN;
 
@@ -1183,36 +1203,425 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         super.onDestroy();
     }
 
+    public static class InnerTubeTrack {
+        public final String videoId;
+        public final String title;
+        public final String artist;
+        public final String thumbnail;
+
+        public InnerTubeTrack(String videoId, String title, String artist, String thumbnail) {
+            this.videoId = videoId;
+            this.title = title;
+            this.artist = artist;
+            this.thumbnail = thumbnail;
+        }
+    }
+
+    private void playAndroidAutoTrack(String mediaId) {
+        try {
+            String[] parts = mediaId.split(":", 5);
+            if (parts.length >= 2) {
+                String vidOrType = parts[1];
+                String title = parts.length > 2 ? Uri.decode(parts[2]) : "SuperMusic PRO";
+                String artist = parts.length > 3 ? Uri.decode(parts[3]) : "Artista";
+                String cover = parts.length > 4 ? Uri.decode(parts[4]) : "";
+
+                currentTitle = title;
+                currentArtist = artist;
+                currentCover = cover;
+                currentVideoId = "query".equals(vidOrType) ? "" : vidOrType;
+                hasRetriedNatively = false;
+
+                updateMediaSessionState();
+                startForegroundWithNotification();
+                playTrackNatively(null, currentVideoId);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error playing Android Auto track: " + mediaId, e);
+        }
+    }
+
+    private void playAndroidAutoSearch(String query) {
+        executorService.execute(() -> {
+            List<InnerTubeTrack> tracks = fetchInnerTubeTracks(query, 5);
+            if (!tracks.isEmpty()) {
+                InnerTubeTrack first = tracks.get(0);
+                mainHandler.post(() -> {
+                    currentTitle = first.title;
+                    currentArtist = first.artist;
+                    currentCover = first.thumbnail;
+                    currentVideoId = first.videoId;
+                    hasRetriedNatively = false;
+
+                    updateMediaSessionState();
+                    startForegroundWithNotification();
+                    playTrackNatively(null, first.videoId);
+                });
+            } else {
+                mainHandler.post(() -> {
+                    currentTitle = query;
+                    currentArtist = "SuperMusic PRO";
+                    currentCover = "";
+                    currentVideoId = "";
+                    hasRetriedNatively = false;
+
+                    updateMediaSessionState();
+                    startForegroundWithNotification();
+                    playTrackNatively(null, null);
+                });
+            }
+        });
+    }
+
+    private MediaBrowserCompat.MediaItem createGenreCategoryItem(String id, String title, String subtitle) {
+        Bundle extras = new Bundle();
+        extras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+        MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+                .setMediaId(id)
+                .setTitle(title)
+                .setSubtitle(subtitle)
+                .setExtras(extras)
+                .build();
+        return new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE);
+    }
+
+    private List<MediaBrowserCompat.MediaItem> getDefaultFallbackItems() {
+        List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
+        String[][] presets = new String[][] {
+                {"Sinceramente", "Annalisa"},
+                {"Tuta Gold", "Mahmood"},
+                {"100 Messaggi", "Lazza"},
+                {"Storie Brevi", "Tananai & Annalisa"},
+                {"I P' ME, TU P' TE", "Geolier"},
+                {"Espresso", "Sabrina Carpenter"},
+                {"Birds of a Feather", "Billie Eilish"}
+        };
+        for (String[] p : presets) {
+            String title = p[0];
+            String artist = p[1];
+            Bundle itemExtras = new Bundle();
+            itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 2);
+            MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+                    .setMediaId("track:query:" + Uri.encode(title) + ":" + Uri.encode(artist) + ":")
+                    .setTitle(title)
+                    .setSubtitle(artist)
+                    .setExtras(itemExtras)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+        }
+        return items;
+    }
+
+    private List<InnerTubeTrack> fetchInnerTubeTracks(String query, int limit) {
+        List<InnerTubeTrack> list = new ArrayList<>();
+        if (query == null || query.trim().isEmpty()) return list;
+
+        try {
+            JSONObject clientObj = new JSONObject();
+            clientObj.put("clientName", "WEB_REMIX");
+            clientObj.put("clientVersion", "1.20240901.01.00");
+            clientObj.put("hl", "it");
+            clientObj.put("gl", "IT");
+
+            JSONObject payload = new JSONObject();
+            payload.put("context", new JSONObject().put("client", clientObj));
+            payload.put("query", query);
+
+            RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
+            Request request = new Request.Builder()
+                    .url("https://music.youtube.com/youtubei/v1/search?prettyPrint=false")
+                    .post(body)
+                    .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
+                    .header("X-YouTube-Client-Name", "67")
+                    .header("X-YouTube-Client-Version", "1.20240901.01.00")
+                    .header("Origin", "https://music.youtube.com")
+                    .header("Referer", "https://music.youtube.com/")
+                    .build();
+
+            try (Response response = okHttpClient.newCall(request).execute()) {
+                if (response.isSuccessful() && response.body() != null) {
+                    String respStr = response.body().string();
+                    JSONObject root = new JSONObject(respStr);
+                    parseMusicItems(root, list, limit);
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error fetching InnerTube tracks for query: " + query, e);
+        }
+        return list;
+    }
+
+    private void parseMusicItems(Object node, List<InnerTubeTrack> list, int limit) {
+        if (node == null || list.size() >= limit) return;
+
+        if (node instanceof JSONObject) {
+            JSONObject obj = (JSONObject) node;
+            if (obj.has("musicResponsiveListItemRenderer")) {
+                JSONObject r = obj.optJSONObject("musicResponsiveListItemRenderer");
+                if (r != null) {
+                    String videoId = "";
+                    JSONObject playData = r.optJSONObject("playlistItemData");
+                    if (playData != null) {
+                        videoId = playData.optString("videoId", "");
+                    }
+                    if (videoId.isEmpty()) {
+                        JSONObject overlay = r.optJSONObject("overlay");
+                        if (overlay != null) {
+                            JSONObject thumbOverlay = overlay.optJSONObject("musicItemThumbnailOverlayRenderer");
+                            if (thumbOverlay != null) {
+                                JSONObject content = thumbOverlay.optJSONObject("content");
+                                if (content != null) {
+                                    JSONObject playBtn = content.optJSONObject("musicPlayButtonRenderer");
+                                    if (playBtn != null) {
+                                        JSONObject nav = playBtn.optJSONObject("playNavigationEndpoint");
+                                        if (nav != null) {
+                                            JSONObject watch = nav.optJSONObject("watchEndpoint");
+                                            if (watch != null) {
+                                                videoId = watch.optString("videoId", "");
+                                            }
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    String title = "";
+                    String artist = "";
+                    String thumb = "";
+
+                    JSONArray flexCols = r.optJSONArray("flexColumns");
+                    if (flexCols != null && flexCols.length() > 0) {
+                        JSONObject col0 = flexCols.optJSONObject(0);
+                        if (col0 != null) {
+                            JSONObject flexRenderer = col0.optJSONObject("musicResponsiveListItemFlexColumnRenderer");
+                            if (flexRenderer != null) {
+                                JSONObject textObj = flexRenderer.optJSONObject("text");
+                                if (textObj != null) {
+                                    JSONArray runs = textObj.optJSONArray("runs");
+                                    if (runs != null && runs.length() > 0) {
+                                        title = runs.optJSONObject(0).optString("text", "");
+                                    }
+                                }
+                            }
+                        }
+                        if (flexCols.length() > 1) {
+                            JSONObject col1 = flexCols.optJSONObject(1);
+                            if (col1 != null) {
+                                JSONObject flexRenderer = col1.optJSONObject("musicResponsiveListItemFlexColumnRenderer");
+                                if (flexRenderer != null) {
+                                    JSONObject textObj = flexRenderer.optJSONObject("text");
+                                    if (textObj != null) {
+                                        JSONArray runs = textObj.optJSONArray("runs");
+                                        if (runs != null && runs.length() > 0) {
+                                            artist = runs.optJSONObject(0).optString("text", "");
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    }
+
+                    JSONObject thumbObj = r.optJSONObject("thumbnail");
+                    if (thumbObj != null) {
+                        JSONObject musicThumb = thumbObj.optJSONObject("musicThumbnailRenderer");
+                        if (musicThumb != null) {
+                            JSONObject tObj = musicThumb.optJSONObject("thumbnail");
+                            if (tObj != null) {
+                                JSONArray thumbs = tObj.optJSONArray("thumbnails");
+                                if (thumbs != null && thumbs.length() > 0) {
+                                    thumb = thumbs.optJSONObject(thumbs.length() - 1).optString("url", "");
+                                }
+                            }
+                        }
+                    }
+
+                    if (!videoId.isEmpty() && !title.isEmpty()) {
+                        list.add(new InnerTubeTrack(videoId, title, artist.isEmpty() ? "SuperMusic" : artist, thumb));
+                    }
+                }
+            }
+
+            java.util.Iterator<String> keys = obj.keys();
+            while (keys.hasNext()) {
+                String k = keys.next();
+                parseMusicItems(obj.opt(k), list, limit);
+            }
+        } else if (node instanceof JSONArray) {
+            JSONArray arr = (JSONArray) node;
+            for (int i = 0; i < arr.length(); i++) {
+                parseMusicItems(arr.opt(i), list, limit);
+            }
+        }
+    }
+
     @Nullable
     @Override
     public BrowserRoot onGetRoot(@NonNull String clientPackageName, int clientUid, @Nullable Bundle rootHints) {
         Log.d(TAG, "Android Auto onGetRoot for client: " + clientPackageName);
-        return new BrowserRoot(MEDIA_ROOT_ID, null);
+        Bundle extras = new Bundle();
+        extras.putBoolean("android.media.browse.SEARCH_SUPPORTED", true);
+        extras.putBoolean("android.media.browse.CONTENT_STYLE_SUPPORTED", true);
+        extras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1); // Grid layout (Spotify style)
+        extras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 2);  // List layout
+        return new BrowserRoot(MEDIA_ROOT_ID, extras);
     }
 
     @Override
     public void onLoadChildren(@NonNull String parentId, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
         Log.d(TAG, "Android Auto onLoadChildren for parentId: " + parentId);
-        List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
 
         if (MEDIA_ROOT_ID.equals(parentId)) {
-            MediaDescriptionCompat descNow = new MediaDescriptionCompat.Builder()
+            List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
+
+            // 1. Trending / Top Hits (Browsable Grid)
+            Bundle trendingExtras = new Bundle();
+            trendingExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat descTrending = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_TRENDING)
+                    .setTitle("🔥 Top Hit & Tendenze")
+                    .setSubtitle("I brani più ascoltati del momento")
+                    .setExtras(trendingExtras)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(descTrending, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            // 2. Genres & Categories (Browsable Grid)
+            Bundle genreExtras = new Bundle();
+            genreExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat descGenres = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_GENRES)
+                    .setTitle("🎸 Generi Musicali")
+                    .setSubtitle("Pop, Rap, Rock, Dance, Reggaeton...")
+                    .setExtras(genreExtras)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(descGenres, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            // 3. Search & Discover (Browsable List)
+            Bundle searchExtras = new Bundle();
+            searchExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 2);
+            MediaDescriptionCompat descSearch = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_SEARCH)
+                    .setTitle("🔍 Cerca & Scopri")
+                    .setSubtitle("Cerca qualsiasi brano o artista")
+                    .setExtras(searchExtras)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(descSearch, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            // 4. In Riproduzione (Playable)
+            Bundle nowExtras = new Bundle();
+            nowExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 2);
+            MediaDescriptionCompat.Builder descNowBuilder = new MediaDescriptionCompat.Builder()
                     .setMediaId(MEDIA_ID_NOW_PLAYING)
                     .setTitle(currentTitle != null && !currentTitle.isEmpty() ? currentTitle : "SuperMusic PRO")
                     .setSubtitle(currentArtist != null && !currentArtist.isEmpty() ? currentArtist : "In riproduzione")
-                    .setIconBitmap(cachedCoverBitmap)
-                    .build();
-            items.add(new MediaBrowserCompat.MediaItem(descNow, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+                    .setExtras(nowExtras);
+            if (cachedCoverBitmap != null) {
+                descNowBuilder.setIconBitmap(cachedCoverBitmap);
+            }
+            items.add(new MediaBrowserCompat.MediaItem(descNowBuilder.build(), MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
 
+            // 5. Offline Library (Playable)
+            Bundle localExtras = new Bundle();
+            localExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 2);
             MediaDescriptionCompat descLocal = new MediaDescriptionCompat.Builder()
                     .setMediaId(MEDIA_ID_LOCAL)
-                    .setTitle("Libreria Locale")
+                    .setTitle("💾 Libreria Locale")
                     .setSubtitle("Tutti i brani scaricati offline")
+                    .setExtras(localExtras)
                     .build();
             items.add(new MediaBrowserCompat.MediaItem(descLocal, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+
+            result.sendResult(items);
+            return;
         }
 
-        result.sendResult(items);
+        if (MEDIA_ID_GENRES.equals(parentId)) {
+            List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
+            items.add(createGenreCategoryItem("genre:pop", "🎤 Pop Hits", "I migliori brani pop italiani e internazionali"));
+            items.add(createGenreCategoryItem("genre:rap", "🎧 Rap & Urban", "Trap, rap italiano e hip-hop"));
+            items.add(createGenreCategoryItem("genre:rock", "🎸 Rock Classics", "I grandi classici del rock"));
+            items.add(createGenreCategoryItem("genre:dance", "⚡ Dance & EDM", "Musica elettronica e ritmi dance"));
+            items.add(createGenreCategoryItem("genre:latin", "🌴 Reggaeton & Latin", "I ritmi più caldi del momento"));
+            items.add(createGenreCategoryItem("genre:chill", "☕ Relax & Chill", "Brani acustici e ambient"));
+            result.sendResult(items);
+            return;
+        }
+
+        if (MEDIA_ID_SEARCH.equals(parentId)) {
+            List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
+            items.add(createGenreCategoryItem("search:Nuove Uscite", "✨ Nuove Uscite", "Le ultime novità musicali"));
+            items.add(createGenreCategoryItem("search:Hit Italia", "🇮🇹 Canzoni Italiane", "I brani più amati in Italia"));
+            items.add(createGenreCategoryItem("search:Estate", "☀️ Tormentoni & Summer", "I pezzi più ballati"));
+            items.add(createGenreCategoryItem("search:Anni 90 2000", "📻 Nostalgia 90-2000", "I successi indimenticabili"));
+            result.sendResult(items);
+            return;
+        }
+
+        // ParentId is a category to query dynamically!
+        result.detach();
+        executorService.execute(() -> {
+            String query = "Top Hit Italia";
+            if (MEDIA_ID_TRENDING.equals(parentId)) {
+                query = "Top Hit Italia 2024";
+            } else if (parentId.startsWith("genre:")) {
+                String sub = parentId.substring("genre:".length());
+                if ("pop".equals(sub)) query = "Pop Hits 2024";
+                else if ("rap".equals(sub)) query = "Rap Italiano 2024";
+                else if ("rock".equals(sub)) query = "Rock Classics";
+                else if ("dance".equals(sub)) query = "Dance EDM Hits";
+                else if ("latin".equals(sub)) query = "Reggaeton 2024";
+                else if ("chill".equals(sub)) query = "Acoustic Relax";
+            } else if (parentId.startsWith("search:")) {
+                query = parentId.substring("search:".length());
+            }
+
+            List<InnerTubeTrack> tracks = fetchInnerTubeTracks(query, 20);
+            List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
+            for (InnerTubeTrack t : tracks) {
+                Bundle itemExtras = new Bundle();
+                itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 2);
+                MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+                        .setMediaId("track:" + t.videoId + ":" + Uri.encode(t.title) + ":" + Uri.encode(t.artist) + ":" + Uri.encode(t.thumbnail))
+                        .setTitle(t.title)
+                        .setSubtitle(t.artist)
+                        .setIconUri(t.thumbnail != null && !t.thumbnail.isEmpty() ? Uri.parse(t.thumbnail) : null)
+                        .setExtras(itemExtras)
+                        .build();
+                items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+            }
+
+            if (items.isEmpty()) {
+                items.addAll(getDefaultFallbackItems());
+            }
+
+            mainHandler.post(() -> result.sendResult(items));
+        });
+    }
+
+    @Override
+    public void onSearch(@NonNull String query, Bundle extras, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
+        Log.d(TAG, "Android Auto onSearch: " + query);
+        result.detach();
+        executorService.execute(() -> {
+            List<InnerTubeTrack> tracks = fetchInnerTubeTracks(query, 20);
+            List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
+            for (InnerTubeTrack t : tracks) {
+                Bundle itemExtras = new Bundle();
+                itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 2);
+                MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+                        .setMediaId("track:" + t.videoId + ":" + Uri.encode(t.title) + ":" + Uri.encode(t.artist) + ":" + Uri.encode(t.thumbnail))
+                        .setTitle(t.title)
+                        .setSubtitle(t.artist)
+                        .setIconUri(t.thumbnail != null && !t.thumbnail.isEmpty() ? Uri.parse(t.thumbnail) : null)
+                        .setExtras(itemExtras)
+                        .build();
+                items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+            }
+            if (items.isEmpty()) {
+                items.addAll(getDefaultFallbackItems());
+            }
+            mainHandler.post(() -> result.sendResult(items));
+        });
     }
 
     @Nullable
