@@ -282,7 +282,7 @@ export default function SettingsModal({
               <div className="pt-2 border-t border-slate-800/60 flex items-center justify-between text-xs text-slate-400">
                 <span>Versione Applicazione</span>
                 <span className="font-mono text-emerald-400 font-semibold">
-                  v2.4.0 PRO {typeof window !== 'undefined' && (window.Capacitor?.isNativePlatform?.() || /Android/i.test(navigator?.userAgent || '')) ? '(Android Version)' : '(Desktop Edition)'}
+                  v2.4.1 PRO {typeof window !== 'undefined' && (window.Capacitor?.isNativePlatform?.() || /Android/i.test(navigator?.userAgent || '')) ? '(Android Version)' : '(Desktop Edition)'}
                 </span>
               </div>
             </div>
