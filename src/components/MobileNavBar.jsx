@@ -18,8 +18,7 @@ export default function MobileNavBar({
 
   return (
     <nav 
-      style={{ paddingBottom: 'max(env(safe-area-inset-bottom, 0px), 6px)' }}
-      className="md:hidden w-full min-h-[60px] py-1 theme-bg-secondary border-t theme-border shrink-0 z-40 flex items-center justify-around px-1 select-none"
+      className="md:hidden w-full h-13 theme-bg-secondary border-t theme-border shrink-0 z-40 flex items-center justify-around px-1 select-none"
     >
       {navItems.map((item) => {
         const Icon = item.icon;

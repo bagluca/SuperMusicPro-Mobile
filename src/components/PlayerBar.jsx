@@ -107,7 +107,7 @@ export default function PlayerBar({
   const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
 
   return (
-    <footer className="relative h-16 md:h-22 theme-bg-secondary/95 border-t theme-border px-3 md:px-6 flex items-center justify-between backdrop-blur-xl select-none z-40 flex-shrink-0">
+    <footer className="relative h-14 md:h-22 theme-bg-secondary/95 border-t theme-border px-3 md:px-6 flex items-center justify-between backdrop-blur-xl select-none z-40 flex-shrink-0">
       {/* Mobile-only sleek edge scrubber */}
       <div 
         className="sm:hidden absolute top-0 left-0 right-0 h-1 bg-slate-800/80 cursor-pointer overflow-hidden z-20"
@@ -134,7 +134,7 @@ export default function PlayerBar({
           <img
             src={currentTrack.cover}
             alt={currentTrack.title}
-            className={`w-11 h-11 md:w-13 md:h-13 rounded-lg object-cover shadow-lg border border-slate-700/50 transition-transform ${
+            className={`w-10 h-10 md:w-13 md:h-13 rounded-lg object-cover shadow-lg border border-slate-700/50 transition-transform ${
               isPlaying ? 'scale-100 ring-2 ring-emerald-500/40' : 'scale-95 opacity-80'
             }`}
           />
@@ -222,7 +222,7 @@ export default function PlayerBar({
 
           <button
             onClick={onTogglePlay}
-            className="w-9 h-9 md:w-10 md:h-10 rounded-full bg-white text-slate-950 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,255,255,0.3)]"
+            className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white text-slate-950 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-[0_0_15px_rgba(255,255,255,0.3)]"
             title={isPlaying ? 'Pausa' : 'Riproduci'}
           >
             {isPlaying ? (

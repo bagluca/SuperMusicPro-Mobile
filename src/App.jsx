@@ -92,8 +92,9 @@ export default function App() {
     // Configure native Android status bar if on Capacitor
     try {
       if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
-        StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
+        StatusBar.setOverlaysWebView({ overlay: false }).catch(() => {});
         StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+        StatusBar.setBackgroundColor({ color: '#090d16' }).catch(() => {});
       }
     } catch {}
   }, [settings.theme]);

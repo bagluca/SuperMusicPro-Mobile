@@ -29,8 +29,7 @@ export default function TitleBar({
 
   return (
     <div 
-      style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 8px)' }}
-      className="w-full theme-bg-secondary flex items-center justify-between px-3.5 pb-2 md:py-0 md:h-9 select-none border-b theme-border z-50 text-xs text-slate-400 flex-shrink-0"
+      className="w-full h-10 md:h-9 theme-bg-secondary flex items-center justify-between px-3 select-none border-b theme-border z-50 text-xs text-slate-400 flex-shrink-0"
     >
       {/* App branding */}
       <div className="flex items-center space-x-2.5 font-medium tracking-wide">
