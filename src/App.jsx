@@ -17,7 +17,6 @@ import QueueView from './components/QueueView';
 import GlitchEasterEgg from './components/GlitchEasterEgg';
 import MobileNavBar from './components/MobileNavBar';
 import SongRecognitionModal from './components/SongRecognitionModal';
-import { StatusBar, Style as StatusBarStyle } from '@capacitor/status-bar';
 
 import { musicService, FULL_CATALOG } from './services/musicService';
 import { storageService } from './services/storageService';
@@ -88,22 +87,6 @@ export default function App() {
     const activeTheme = settings.theme || 'dark';
     document.documentElement.setAttribute('data-theme', activeTheme);
     document.body.className = `theme-${activeTheme} font-sans select-none overflow-x-hidden overflow-y-hidden h-[100dvh] w-full max-w-full text-slate-100`;
-
-    // Configure native Android status bar if on Capacitor
-    try {
-      if (
-        typeof window !== 'undefined' &&
-        window.Capacitor?.isNativePlatform?.() &&
-        StatusBar &&
-        StatusBarStyle
-      ) {
-        StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
-        StatusBar.setStyle({ style: StatusBarStyle.Dark }).catch(() => {});
-        if (typeof StatusBar.setBackgroundColor === 'function') {
-          StatusBar.setBackgroundColor({ color: '#090d16' }).catch(() => {});
-        }
-      }
-    } catch {}
   }, [settings.theme]);
 
   // Fast liked map

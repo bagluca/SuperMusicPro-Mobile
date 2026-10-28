@@ -1,6 +1,6 @@
 {
   "name": "supermusicpro",
-  "version": "2.2.9",
+  "version": "2.3.0",
   "description": "SuperMusicPro - Pure YouTube Music Desktop Player & Downloader",
   "main": "main.js",
   "scripts": {
@@ -26,7 +26,6 @@
     "@capacitor/cli": "^8.5.3",
     "@capacitor/core": "^8.5.3",
     "@capacitor/ios": "^8.5.3",
-    "@capacitor/status-bar": "^8.0.4",
     "@vitejs/plugin-react": "^6.1.2",
     "autoprefixer": "^10.6.1",
     "lucide-react": "^1.59.0",
