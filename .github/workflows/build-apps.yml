@@ -7,6 +7,10 @@ on:
     branches: [ main, master ]
   workflow_dispatch:
 
+env:
+  CI: true
+  CAPACITOR_TELEMETRY: "false"
+
 jobs:
   build-ios:
     name: 🍏 Compila iOS (.ipa)
@@ -16,10 +20,23 @@ jobs:
       - name: Checkout Codice
         uses: actions/checkout@v4
 
-      - name: Configura Node.js
+      - name: Configura e Verifica Xcode
+        run: |
+          if [ -d "/Applications/Xcode_16.1.app" ]; then
+            sudo xcode-select -switch /Applications/Xcode_16.1.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_16.app" ]; then
+            sudo xcode-select -switch /Applications/Xcode_16.app/Contents/Developer
+          elif [ -d "/Applications/Xcode_15.4.app" ]; then
+            sudo xcode-select -switch /Applications/Xcode_15.4.app/Contents/Developer
+          else
+            sudo xcode-select -switch /Applications/Xcode.app/Contents/Developer
+          fi
+          xcodebuild -version
+
+      - name: Configura Node.js LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Installa Dipendenze
@@ -29,10 +46,9 @@ jobs:
         run: npm run build
 
       - name: Sincronizza Capacitor iOS
-        run: npx cap sync ios
-
-      - name: Seleziona Versione Xcode
-        run: sudo xcode-select -switch /Applications/Xcode_15.4.app/Contents/Developer
+        run: |
+          npx --no-install @capacitor/cli copy ios
+          npx --no-install @capacitor/cli update ios
 
       - name: Compila Progetto Xcode (Unsigned / Ad-Hoc)
         run: |
@@ -74,10 +90,10 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Configura Node.js
+      - name: Configura Node.js LTS
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: 'npm'
 
       - name: Installa Dipendenze
@@ -87,7 +103,9 @@ jobs:
         run: npm run build
 
       - name: Sincronizza Capacitor Android
-        run: npx cap sync android
+        run: |
+          npx --no-install @capacitor/cli copy android
+          npx --no-install @capacitor/cli update android
 
       - name: Concedi Permessi di Esecuzione a Gradlew
         run: chmod +x android/gradlew

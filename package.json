@@ -8,7 +8,8 @@
     "build": "vite build",
     "preview": "vite preview",
     "start": "vite",
-    "desktop": "electron ."
+    "desktop": "electron .",
+    "cap": "cap"
   },
   "keywords": [
     "supermusicpro",
