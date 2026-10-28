@@ -18,9 +18,11 @@ export default function MobileNavBar({
 
   return (
     <nav 
-      className="md:hidden w-full h-13 theme-bg-secondary border-t theme-border shrink-0 z-40 flex items-center justify-around px-1 select-none"
+      style={{ paddingBottom: 'env(safe-area-inset-bottom, 0px)' }}
+      className="md:hidden w-full theme-bg-secondary border-t theme-border shrink-0 z-40 select-none"
     >
-      {navItems.map((item) => {
+      <div className="w-full h-12 flex items-center justify-around px-1">
+        {navItems.map((item) => {
         const Icon = item.icon;
         const isActive = 
           (item.id === 'lyrics' && isLyricsOpen) || 
@@ -53,6 +55,7 @@ export default function MobileNavBar({
           </button>
         );
       })}
+      </div>
     </nav>
   );
 }

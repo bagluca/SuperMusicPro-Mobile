@@ -102,7 +102,7 @@ export default function InfoModal({ isOpen, onClose }) {
                 <Layers className="w-4 h-4 text-emerald-400 flex-shrink-0 mt-0.5" />
                 <div>
                   <div className="font-semibold text-white">Versione App</div>
-                  <div className="text-emerald-400 font-mono mt-0.5 font-bold">v2.2.6 PRO</div>
+                  <div className="text-emerald-400 font-mono mt-0.5 font-bold">v2.2.7 PRO</div>
                   <div className="text-[10px] text-slate-400 mt-0.5">Build 2026.10 Stabile</div>
                 </div>
               </div>

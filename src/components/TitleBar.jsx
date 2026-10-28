@@ -29,9 +29,11 @@ export default function TitleBar({
 
   return (
     <div 
-      className="w-full h-10 md:h-9 theme-bg-secondary flex items-center justify-between px-3 select-none border-b theme-border z-50 text-xs text-slate-400 flex-shrink-0"
+      style={{ paddingTop: 'env(safe-area-inset-top, 0px)' }}
+      className="w-full theme-bg-secondary select-none border-b theme-border z-50 text-xs text-slate-400 flex-shrink-0"
     >
-      {/* App branding */}
+      <div className="w-full h-11 md:h-9 flex items-center justify-between px-3">
+        {/* App branding */}
       <div className="flex items-center space-x-2.5 font-medium tracking-wide">
         {/* App Icon + Neon Green Circle */}
         <img src={logoImg} alt="SuperMusic PRO" className="w-5 h-5 rounded-md object-cover shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
@@ -106,6 +108,7 @@ export default function TitleBar({
             </button>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
