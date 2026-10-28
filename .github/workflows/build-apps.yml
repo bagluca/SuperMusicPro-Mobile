@@ -1,4 +1,4 @@
-﻿name: Build SuperMusic PRO Mobile (iOS & Android)
+name: Build SuperMusic PRO Mobile (iOS & Android)
 
 on:
   push:
@@ -39,10 +39,6 @@ jobs:
           node-version: 22
           cache: 'npm'
 
-      - name: Prepara dipendenze iOS pulite
-        run: |
-          node -e "const p = require('./package.json'); delete p.dependencies['@capacitor/status-bar']; delete p.dependencies['@capacitor/preferences']; delete p.dependencies['@capacitor/filesystem']; require('fs').writeFileSync('./package.json', JSON.stringify(p, null, 2))"
-
       - name: Installa Dipendenze
         run: npm install
 
@@ -71,12 +67,13 @@ jobs:
           mkdir -p build/Payload
           cp -r build/App.xcarchive/Products/Applications/App.app build/Payload/
           cd build
-          zip -r SuperMusic_PRO_v2.4.3.ipa Payload
+          VERSION=$(node -p "require('../package.json').version")
+          zip -r "SuperMusic_PRO_v${VERSION}.ipa" Payload
 
       - name: 📦 Salva Artefatto iOS (.ipa)
         uses: actions/upload-artifact@v4
         with:
-          name: SuperMusic_PRO_iOS_v2.4.3.ipa
-          path: build/SuperMusic_PRO_v2.4.3.ipa
+          name: SuperMusic_PRO_iOS_ipa
+          path: build/*.ipa
           retention-days: 30
 
