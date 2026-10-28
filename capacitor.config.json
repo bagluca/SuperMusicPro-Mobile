@@ -1,0 +1,36 @@
+{
+  "appId": "com.supermusicpro.app",
+  "appName": "SuperMusic PRO",
+  "webDir": "dist",
+  "loggingBehavior": "none",
+  "server": {
+    "androidScheme": "https",
+    "iosScheme": "capacitor",
+    "cleartext": true,
+    "allowNavigation": [
+      "*.youtube.com",
+      "*.youtube-nocookie.com",
+      "*.googlevideo.com",
+      "*.ytimg.com",
+      "*.google.com"
+    ]
+  },
+  "android": {
+    "allowMixedContent": true
+  },
+  "ios": {
+    "contentInset": "always",
+    "allowsLinkPreview": false,
+    "scrollEnabled": true,
+    "preferredContentMode": "mobile"
+  },
+  "plugins": {
+    "CapacitorHttp": {
+      "enabled": true
+    },
+    "StatusBar": {
+      "overlaysWebView": true,
+      "style": "DARK"
+    }
+  }
+}

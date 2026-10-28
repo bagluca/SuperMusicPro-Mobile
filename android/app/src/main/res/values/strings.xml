@@ -1,0 +1,7 @@
+<?xml version='1.0' encoding='utf-8'?>
+<resources>
+    <string name="app_name">SuperMusic PRO</string>
+    <string name="title_activity_main">SuperMusic PRO</string>
+    <string name="package_name">com.supermusicpro.app</string>
+    <string name="custom_url_scheme">com.supermusicpro.app</string>
+</resources>

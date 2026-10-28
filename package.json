@@ -1,0 +1,46 @@
+{
+  "name": "supermusicpro",
+  "version": "2.3.0",
+  "description": "SuperMusicPro - Pure YouTube Music Desktop Player & Downloader",
+  "main": "main.js",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "start": "vite",
+    "desktop": "electron ."
+  },
+  "keywords": [
+    "supermusicpro",
+    "youtube-music",
+    "hi-fi",
+    "electron",
+    "react",
+    "windows"
+  ],
+  "author": "SuperMusicPro Team",
+  "license": "GPL-3.0",
+  "dependencies": {
+    "@capacitor/android": "^8.5.3",
+    "@capacitor/cli": "^8.5.3",
+    "@capacitor/core": "^8.5.3",
+    "@capacitor/filesystem": "^8.1.5",
+    "@capacitor/ios": "^8.5.3",
+    "@capacitor/preferences": "^8.0.1",
+    "@capacitor/status-bar": "^8.0.4",
+    "@vitejs/plugin-react": "^6.1.2",
+    "autoprefixer": "^10.6.1",
+    "lucide-react": "^1.59.0",
+    "postcss": "^8.5.30",
+    "react": "^19.3.1",
+    "react-dom": "^19.3.1",
+    "tailwindcss": "^4.3.3",
+    "vite": "^8.3.4",
+    "youtubei.js": "^18.2.0"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.1.18",
+    "electron": "^44.9.0",
+    "rcedit": "^5.0.2"
+  }
+}

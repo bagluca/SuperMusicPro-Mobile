@@ -1,0 +1,246 @@
+@import "tailwindcss";
+
+:root {
+  --bg-primary: #0a0d14;
+  --bg-secondary: #0d121c;
+  --bg-surface: #121824;
+  --bg-card: #182030;
+  --bg-card-hover: #212c40;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --accent-brand: #10b981;
+  --accent-glow: rgba(16, 185, 129, 0.35);
+}
+
+[data-theme="dark"], body.theme-dark {
+  --bg-primary: #0a0d14;
+  --bg-secondary: #0d121c;
+  --bg-surface: #121824;
+  --bg-card: #182030;
+  --bg-card-hover: #212c40;
+  --border-subtle: rgba(255, 255, 255, 0.08);
+  --accent-brand: #10b981;
+  --accent-glow: rgba(16, 185, 129, 0.35);
+}
+
+[data-theme="midnight"], body.theme-midnight {
+  --bg-primary: #050711;
+  --bg-secondary: #080c1d;
+  --bg-surface: #0e1533;
+  --bg-card: #141e48;
+  --bg-card-hover: #1c2a63;
+  --border-subtle: rgba(99, 102, 241, 0.2);
+  --accent-brand: #6366f1;
+  --accent-glow: rgba(99, 102, 241, 0.35);
+}
+
+[data-theme="emerald"], body.theme-emerald {
+  --bg-primary: #040e0a;
+  --bg-secondary: #081811;
+  --bg-surface: #0e271c;
+  --bg-card: #15392a;
+  --bg-card-hover: #1c4b37;
+  --border-subtle: rgba(16, 185, 129, 0.25);
+  --accent-brand: #10b981;
+  --accent-glow: rgba(16, 185, 129, 0.4);
+}
+
+[data-theme="cyberpunk"], body.theme-cyberpunk {
+  --bg-primary: #0d0416;
+  --bg-secondary: #150723;
+  --bg-surface: #220b39;
+  --bg-card: #311151;
+  --bg-card-hover: #44176f;
+  --border-subtle: rgba(236, 72, 153, 0.25);
+  --accent-brand: #ec4899;
+  --accent-glow: rgba(236, 72, 153, 0.45);
+}
+
+[data-theme="sunset"], body.theme-sunset {
+  --bg-primary: #120705;
+  --bg-secondary: #1c0b08;
+  --bg-surface: #2a110c;
+  --bg-card: #3d1912;
+  --bg-card-hover: #522219;
+  --border-subtle: rgba(249, 115, 22, 0.25);
+  --accent-brand: #f97316;
+  --accent-glow: rgba(249, 115, 22, 0.4);
+}
+
+/* Dynamic theme background and text rules */
+.theme-bg-primary {
+  background-color: var(--bg-primary) !important;
+}
+
+.theme-bg-secondary {
+  background-color: var(--bg-secondary) !important;
+}
+
+.theme-bg-surface {
+  background-color: var(--bg-surface) !important;
+}
+
+.theme-bg-card {
+  background-color: var(--bg-card) !important;
+}
+
+.theme-border {
+  border-color: var(--border-subtle) !important;
+}
+
+.theme-accent-text {
+  color: var(--accent-brand) !important;
+}
+
+.theme-accent-bg {
+  background-color: var(--accent-brand) !important;
+}
+
+.theme-accent-border {
+  border-color: var(--accent-brand) !important;
+}
+
+/* Custom scrollbars */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: rgba(148, 163, 184, 0.2);
+  border-radius: 9999px;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  background: rgba(148, 163, 184, 0.4);
+}
+
+/* Glassmorphism utility (GPU optimized for 120Hz Android WebView) */
+.glass-panel {
+  background: var(--bg-surface);
+  border: 1px solid var(--border-subtle);
+}
+
+.glass-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-subtle);
+}
+
+.backdrop-blur-xl,
+.backdrop-blur-md,
+.backdrop-blur-sm {
+  backdrop-filter: none !important;
+  -webkit-backdrop-filter: none !important;
+}
+
+/* Text glow */
+.text-glow {
+  text-shadow: 0 0 12px var(--accent-glow);
+}
+
+.active-lyric {
+  color: #ffffff;
+  font-weight: 700;
+  transform: scale(1.04);
+  text-shadow: 0 0 15px var(--accent-glow);
+  transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Smooth auto-scroll marquee for single-line overflowing track titles */
+@keyframes track-marquee-scroll {
+  0%, 20% {
+    transform: translateX(0px);
+  }
+  50%, 70% {
+    transform: translateX(calc(-1 * var(--marquee-dist, 40px)));
+  }
+  90%, 100% {
+    transform: translateX(0px);
+  }
+}
+
+.animate-track-marquee {
+  display: inline-block;
+  will-change: transform;
+  animation: track-marquee-scroll 6s ease-in-out infinite;
+}
+
+@keyframes glitch-timer {
+  0% { width: 100%; }
+  100% { width: 0%; }
+}
+
+/* Mobile & Android High-DPI Display Optimizations */
+html, body {
+  width: 100%;
+  max-width: 100vw;
+  height: 100%;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  text-rendering: optimizeLegibility;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  background-color: #090d16 !important;
+}
+
+img {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.track-item-perf {
+  transform: translateZ(0);
+}
+
+/* Hide scrollbar for clean mobile experience */
+.scrollbar-none::-webkit-scrollbar {
+  display: none;
+}
+.scrollbar-none {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Smooth Marquee Bounce Animation for Song Titles & Artists */
+@keyframes marquee-bounce {
+  0%, 18% {
+    transform: translateX(0);
+  }
+  82%, 100% {
+    transform: translateX(var(--marquee-dist, 0px));
+  }
+}
+
+/* Enlarged text / Accessibility resilience */
+button, a, input, select {
+  touch-action: manipulation;
+}
+
+/* iOS Safe Area & Dynamic Island / Home Indicator Support */
+.pt-safe {
+  padding-top: env(safe-area-inset-top, 0px);
+}
+.pb-safe {
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+}
+.pl-safe {
+  padding-left: env(safe-area-inset-left, 0px);
+}
+.pr-safe {
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+body {
+  padding-top: env(safe-area-inset-top, 0px);
+  padding-bottom: env(safe-area-inset-bottom, 0px);
+  padding-left: env(safe-area-inset-left, 0px);
+  padding-right: env(safe-area-inset-right, 0px);
+}
+
+
+
+

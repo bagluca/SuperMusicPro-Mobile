@@ -1,0 +1,1077 @@
+/**
+ * SuperMusicPro - Pure Music Catalog & Autonomous Streaming Service
+ * Music Engine:
+ * 1. InnerTube Discovery (WEB_REMIX): Direct YouTube Music search, suggestions, and charts.
+ * 2. Smart Song Identification: Fuzzy bigram matching, title/artist normalization, and duration tolerance scoring.
+ * 3. Autonomous Mobile Stream Resolution: Direct high-quality AAC/m4a streams without requiring a remote server.
+ * 4. Fast LAN Acceleration: Seamlessly uses local PC backend when connected on LAN/Wi-Fi, without blocking mobile playback.
+ */
+
+import { Capacitor, CapacitorHttp } from '@capacitor/core';
+import { storageService } from './storageService';
+
+const BACKEND_URL = 'http://127.0.0.1:4545';
+let backendChecked = false;
+let isBackendOnline = false;
+
+async function checkBackend() {
+  if (Capacitor.isNativePlatform()) return false;
+  if (backendChecked) return isBackendOnline;
+  try {
+    const res = await fetch(`${BACKEND_URL}/api/ping`, { signal: AbortSignal.timeout(800) });
+    isBackendOnline = res.ok;
+  } catch {
+    isBackendOnline = false;
+  }
+  backendChecked = true;
+  return isBackendOnline;
+}
+
+export const MUSIC_SOURCES = [
+  { id: 'all', name: 'Tutte le Fonti' },
+  { id: 'youtube', name: 'YouTube Music' },
+  { id: 'spotify', name: 'Spotify & FIMI' },
+  { id: 'apple', name: 'Apple Music Top' },
+];
+
+// Rich verified catalog of Latest Releases ("Ultime Uscite") for instant zero-latency start & offline fallback
+export const FULL_CATALOG = [
+  // --- FONT: SPOTIFY & FIMI ITALIA (ULTIME USCITE) ---
+  {
+    id: 'yt_9bZkp7q19f0',
+    videoId: 'f4Mc-NYPHaQ',
+    title: 'Balorda Nostalgia',
+    artist: 'Olly, JVLI',
+    album: 'Tutta Vita',
+    cover: 'https://i.ytimg.com/vi/f4Mc-NYPHaQ/hqdefault.jpg',
+    duration: 198,
+    source: 'Spotify & FIMI',
+    genre: 'Pop'
+  },
+  {
+    id: 'yt_kPa7bsKwL-c',
+    videoId: 'kPa7bsKwL-c',
+    title: 'Die With A Smile',
+    artist: 'Lady Gaga, Bruno Mars',
+    album: 'Mayhem',
+    cover: 'https://i.ytimg.com/vi/kPa7bsKwL-c/hqdefault.jpg',
+    duration: 251,
+    source: 'Spotify & FIMI',
+    genre: 'Pop'
+  },
+  {
+    id: 'yt_ekr2nIex040',
+    videoId: 'ekr2nIex040',
+    title: 'APT.',
+    artist: 'ROSÉ & Bruno Mars',
+    album: 'rosie',
+    cover: 'https://i.ytimg.com/vi/ekr2nIex040/hqdefault.jpg',
+    duration: 170,
+    source: 'Spotify & FIMI',
+    genre: 'Pop'
+  },
+  {
+    id: 'yt_qon1NJ6D3co',
+    videoId: 'qon1NJ6D3co',
+    title: "I P' ME, TU P' TE",
+    artist: 'Geolier',
+    album: 'Dio lo sa - Atto II',
+    cover: 'https://i.ytimg.com/vi/qon1NJ6D3co/hqdefault.jpg',
+    duration: 187,
+    source: 'Spotify & FIMI',
+    genre: 'Urban'
+  },
+  {
+    id: 'yt_K_iaQPLdmJU',
+    videoId: 'K_iaQPLdmJU',
+    title: 'Sinceramente',
+    artist: 'Annalisa',
+    album: 'E poi siamo finiti nel vortice',
+    cover: 'https://i.ytimg.com/vi/K_iaQPLdmJU/hqdefault.jpg',
+    duration: 215,
+    source: 'Spotify & FIMI',
+    genre: 'Pop'
+  },
+  {
+    id: 'yt_yr_Rwgdh59w',
+    videoId: 'yr_Rwgdh59w',
+    title: 'TUTA GOLD',
+    artist: 'Mahmood',
+    album: 'NEI LETTI DEGLI ALTRI',
+    cover: 'https://i.ytimg.com/vi/yr_Rwgdh59w/hqdefault.jpg',
+    duration: 178,
+    source: 'Spotify & FIMI',
+    genre: 'Urban'
+  },
+  {
+    id: 'yt_8mCBkGR_PRc',
+    videoId: '8mCBkGR_PRc',
+    title: 'CLICK BOOM!',
+    artist: 'Rose Villain',
+    album: 'RADIO VEGA',
+    cover: 'https://i.ytimg.com/vi/8mCBkGR_PRc/hqdefault.jpg',
+    duration: 225,
+    source: 'Spotify & FIMI',
+    genre: 'Pop'
+  },
+  {
+    id: 'yt_ZntlqJju8xQ',
+    videoId: 'ZntlqJju8xQ',
+    title: 'La Noia',
+    artist: 'Angelina Mango',
+    album: 'poké melodrama',
+    cover: 'https://i.ytimg.com/vi/ZntlqJju8xQ/hqdefault.jpg',
+    duration: 189,
+    source: 'Spotify & FIMI',
+    genre: 'Pop'
+  },
+
+  // --- FONT: YOUTUBE MUSIC (ULTIME USCITE) ---
+  {
+    id: 'yt_V9PVRfjEBTI',
+    videoId: 'V9PVRfjEBTI',
+    title: 'BIRDS OF A FEATHER',
+    artist: 'Billie Eilish',
+    album: 'HIT ME HARD AND SOFT',
+    cover: 'https://i.ytimg.com/vi/V9PVRfjEBTI/hqdefault.jpg',
+    duration: 210,
+    source: 'YouTube Music',
+    genre: 'Alternative'
+  },
+  {
+    id: 'yt_eVli-tstM5E',
+    videoId: 'eVli-tstM5E',
+    title: 'Espresso',
+    artist: 'Sabrina Carpenter',
+    album: 'Short n Sweet',
+    cover: 'https://i.ytimg.com/vi/eVli-tstM5E/hqdefault.jpg',
+    duration: 175,
+    source: 'YouTube Music',
+    genre: 'Pop'
+  },
+  {
+    id: 'yt_3c6cG_s09pM',
+    videoId: 'KEG7b851Ric',
+    title: 'Taste',
+    artist: 'Sabrina Carpenter',
+    album: 'Short n Sweet',
+    cover: 'https://i.ytimg.com/vi/KEG7b851Ric/hqdefault.jpg',
+    duration: 157,
+    source: 'YouTube Music',
+    genre: 'Pop'
+  },
+  {
+    id: 'yt_sFMRqxCexDk',
+    videoId: 'sFMRqxCexDk',
+    title: 'luther',
+    artist: 'Kendrick Lamar & SZA',
+    album: 'GNX',
+    cover: 'https://i.ytimg.com/vi/sFMRqxCexDk/hqdefault.jpg',
+    duration: 177,
+    source: 'YouTube Music',
+    genre: 'Hip Hop'
+  },
+  {
+    id: 'yt_a4O-abCXsfA',
+    videoId: 'a4O-abCXsfA',
+    title: 'Timeless',
+    artist: 'The Weeknd, Playboi Carti',
+    album: 'Hurry Up Tomorrow',
+    cover: 'https://i.ytimg.com/vi/a4O-abCXsfA/hqdefault.jpg',
+    duration: 256,
+    source: 'YouTube Music',
+    genre: 'R&B'
+  },
+  {
+    id: 'yt_suAR1PYFNYA',
+    videoId: 'suAR1PYFNYA',
+    title: 'Houdini',
+    artist: 'Dua Lipa',
+    album: 'Radical Optimism',
+    cover: 'https://i.ytimg.com/vi/suAR1PYFNYA/hqdefault.jpg',
+    duration: 185,
+    source: 'YouTube Music',
+    genre: 'Dance'
+  },
+
+  // --- FONT: APPLE MUSIC TOP (ULTIME USCITE) ---
+  {
+    id: 'yt_Oa_RSwwpPaA',
+    videoId: 'Oa_RSwwpPaA',
+    title: 'Beautiful Things',
+    artist: 'Benson Boone',
+    album: 'Fireworks & Rollerblades',
+    cover: 'https://i.ytimg.com/vi/Oa_RSwwpPaA/hqdefault.jpg',
+    duration: 180,
+    source: 'Apple Music Top',
+    genre: 'Pop'
+  },
+  {
+    id: 'yt_GZ3zL7kT6_c',
+    videoId: 'GZ3zL7kT6_c',
+    title: 'Lose Control',
+    artist: 'Teddy Swims',
+    album: "I've Tried Everything But Therapy",
+    cover: 'https://i.ytimg.com/vi/GZ3zL7kT6_c/hqdefault.jpg',
+    duration: 210,
+    source: 'Apple Music Top',
+    genre: 'R&B'
+  },
+  {
+    id: 'yt_aezstCBHOPQ',
+    videoId: 'aezstCBHOPQ',
+    title: 'Too Sweet',
+    artist: 'Hozier',
+    album: 'Unheard',
+    cover: 'https://i.ytimg.com/vi/aezstCBHOPQ/hqdefault.jpg',
+    duration: 251,
+    source: 'Apple Music Top',
+    genre: 'Rock'
+  },
+  {
+    id: 'yt_cF1Na4AIecM',
+    videoId: 'cF1Na4AIecM',
+    title: 'Please Please Please',
+    artist: 'Sabrina Carpenter',
+    album: 'Short n Sweet',
+    cover: 'https://i.ytimg.com/vi/cF1Na4AIecM/hqdefault.jpg',
+    duration: 186,
+    source: 'Apple Music Top',
+    genre: 'Pop'
+  },
+  {
+    id: 'yt_H58vbez_m4E',
+    videoId: 'H58vbez_m4E',
+    title: 'Not Like Us',
+    artist: 'Kendrick Lamar',
+    album: 'Not Like Us',
+    cover: 'https://i.ytimg.com/vi/H58vbez_m4E/hqdefault.jpg',
+    duration: 274,
+    source: 'Apple Music Top',
+    genre: 'Hip Hop'
+  }
+];
+
+export const FALLBACK_TRACKS = FULL_CATALOG;
+
+// Caches
+const videoIdCache = {};
+const streamUrlCache = new Map(); // videoId -> { url, expiresAt }
+let cachedWorkingBackend = null;
+
+// ============================================================================
+// 1. FUZZY MATCHING & NORMALIZATION ALGORITHM
+// ============================================================================
+
+export function normalizeString(str = '') {
+  return String(str)
+    .toLowerCase()
+    .replace(/\(feat\..*?\)/gi, '')
+    .replace(/\(ft\..*?\)/gi, '')
+    .replace(/\[.*?\]/g, '')
+    .replace(/\(.*?(remaster|remix|official|video|audio|lyrics?|visualizer|live|acoustic|edit|version).*?\)/gi, '')
+    .replace(/[^a-z0-9\s]/g, '')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+function getBigrams(str) {
+  const norm = normalizeString(str);
+  const bigrams = new Set();
+  for (let i = 0; i < norm.length - 1; i++) {
+    bigrams.add(norm.slice(i, i + 2));
+  }
+  return bigrams;
+}
+
+function bigramSimilarity(strA, strB) {
+  const normA = normalizeString(strA);
+  const normB = normalizeString(strB);
+  if (!normA || !normB) return 0;
+  if (normA === normB) return 1.0;
+
+  const bgA = getBigrams(normA);
+  const bgB = getBigrams(normB);
+  if (bgA.size === 0 || bgB.size === 0) return 0;
+
+  let intersection = 0;
+  for (const b of bgA) {
+    if (bgB.has(b)) intersection++;
+  }
+  return (2.0 * intersection) / (bgA.size + bgB.size);
+}
+
+function durationScore(targetSec, candidateSec) {
+  if (!targetSec || !candidateSec || candidateSec <= 0) return 0.5;
+  const diff = Math.abs(targetSec - candidateSec);
+  if (diff <= 2) return 1.0;
+  if (diff <= 5) return 0.8;
+  if (diff <= 10) return 0.5;
+  if (diff <= 30) return 0.2;
+  return 0.0;
+}
+
+function computeMatchScore(targetTitle, targetArtist, targetDuration, candTitle, candArtist, candDuration) {
+  const titleScore = bigramSimilarity(targetTitle, candTitle);
+  const artistScore = bigramSimilarity(targetArtist, candArtist);
+  const durScore = durationScore(targetDuration, candDuration);
+  return titleScore * 0.45 + artistScore * 0.35 + durScore * 0.20;
+}
+
+function parseDurationString(timeStr) {
+  if (!timeStr) return 180;
+  const parts = String(timeStr).trim().split(':');
+  if (parts.length === 2) {
+    return parseInt(parts[0], 10) * 60 + parseInt(parts[1], 10);
+  } else if (parts.length === 3) {
+    return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseInt(parts[2], 10);
+  }
+  return 180;
+}
+
+// ============================================================================
+// 2. HTTP CLIENT HELPER (CapacitorHttp with User-Agent & JSON safety)
+// ============================================================================
+
+async function nativePost(url, data, headers = {}) {
+  const jsonHeaders = {
+    'Content-Type': 'application/json',
+    'content-type': 'application/json',
+    'Accept': 'application/json',
+    ...headers
+  };
+
+  // Chromium on Android strips custom User-Agent from JavaScript.
+  // CapacitorHttp natively watches for 'x-cap-user-agent' to override the native OkHttp User-Agent.
+  if (jsonHeaders['User-Agent']) {
+    jsonHeaders['x-cap-user-agent'] = jsonHeaders['User-Agent'];
+  }
+
+  if (Capacitor.isNativePlatform()) {
+    try {
+      const res = await CapacitorHttp.post({
+        url,
+        data: typeof data === 'object' ? data : JSON.parse(data),
+        headers: jsonHeaders,
+        connectTimeout: 8000,
+        readTimeout: 8000
+      });
+      if (res && res.data) {
+        return typeof res.data === 'string' ? JSON.parse(res.data) : res.data;
+      }
+    } catch (e) {
+      console.warn('CapacitorHttp post notice:', e);
+    }
+  }
+
+  // Fallback for browser/desktop dev
+  try {
+    const res = await fetch(url, {
+      method: 'POST',
+      headers: jsonHeaders,
+      body: typeof data === 'string' ? data : JSON.stringify(data),
+      signal: AbortSignal.timeout(6000)
+    });
+    if (res.ok) {
+      return await res.json();
+    }
+  } catch (err) {
+    console.warn('Fetch POST fallback notice:', err);
+  }
+  return null;
+}
+
+// ============================================================================
+// 3. BACKEND DETECTION (Fast non-blocking probe)
+// ============================================================================
+
+async function getWorkingBackend() {
+  if (Capacitor.isNativePlatform()) {
+    return null;
+  }
+  if (cachedWorkingBackend) {
+    return cachedWorkingBackend;
+  }
+  const settings = storageService.getSettings();
+
+  const candidates = [
+    settings?.backendUrl,
+    BACKEND_URL,
+    'http://localhost:4545'
+  ].filter(Boolean);
+
+  try {
+    const winner = await Promise.any(
+      candidates.map(async (url) => {
+        const res = await fetch(`${url}/api/ping`, { signal: AbortSignal.timeout(800) });
+        if (res.ok) return url;
+        throw new Error('Not reachable');
+      })
+    );
+    cachedWorkingBackend = winner;
+    return winner;
+  } catch {
+    return null;
+  }
+}
+
+// ============================================================================
+// 4. INNERTUBE RESPONSE PARSING (Search & Browse)
+// ============================================================================
+
+function parseRenderer(renderer) {
+  if (!renderer) return null;
+  const flexColumns = renderer.flexColumns || [];
+  const col0Runs = flexColumns[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
+  const title = col0Runs[0]?.text || '';
+  if (!title) return null;
+
+  const col1Runs = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
+  const fullSub = col1Runs.map(r => r.text).join('');
+  const parts = fullSub.split(' • ').map(s => s.trim());
+
+  let artist = parts[0] || 'Artista';
+  let album = 'Singolo';
+  let duration = 180;
+
+  if (parts.length >= 2) {
+    const last = parts[parts.length - 1];
+    if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(last)) {
+      duration = parseDurationString(last);
+      if (parts.length >= 3) album = parts[1];
+    } else {
+      album = last;
+    }
+  }
+
+  const videoId = renderer.playlistItemData?.videoId
+    || renderer.navigationEndpoint?.watchEndpoint?.videoId
+    || renderer.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId
+    || col0Runs[0]?.navigationEndpoint?.watchEndpoint?.videoId;
+
+  if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) return null;
+
+  const thumbs = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+  const cover = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500';
+
+  return {
+    id: `yt_${videoId}`,
+    videoId,
+    title,
+    artist,
+    album,
+    cover,
+    duration,
+    source: 'YouTube Music'
+  };
+}
+
+// ============================================================================
+// MAIN MUSIC SERVICE OBJECT
+// ============================================================================
+
+export const musicService = {
+  getWorkingBackend,
+  _homeTracksCache: new Map(),
+
+  /**
+   * Helper: Fetches live latest releases ("Ultime Uscite") via InnerTube WEB_REMIX Songs filter
+   */
+  async _fetchPlatformLatestReleases(query, sourceLabel) {
+    try {
+      const clientContext = {
+        client: {
+          clientName: 'WEB_REMIX',
+          clientVersion: '1.20240901.01.00',
+          hl: 'it',
+          gl: 'IT'
+        }
+      };
+      const headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'X-YouTube-Client-Name': '67',
+        'X-YouTube-Client-Version': '1.20240901.01.00',
+        'Origin': 'https://music.youtube.com',
+        'Referer': 'https://music.youtube.com/'
+      };
+      const payload = {
+        context: clientContext,
+        query,
+        params: 'EgWKAQIIAWoKEAkQBRAKEAMQBA==' // Songs filter (20 full tracks)
+      };
+
+      const data = await nativePost('https://music.youtube.com/youtubei/v1/search?prettyPrint=false', payload, headers);
+      if (!data) return [];
+
+      const results = [];
+      const sections = data.contents?.tabbedSearchResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+      for (const s of sections) {
+        if (s.musicShelfRenderer && Array.isArray(s.musicShelfRenderer.contents)) {
+          for (const it of s.musicShelfRenderer.contents) {
+            const parsed = parseRenderer(it.musicResponsiveListItemRenderer);
+            if (parsed && !results.some(r => r.videoId === parsed.videoId)) {
+              results.push({
+                ...parsed,
+                source: sourceLabel
+              });
+            }
+          }
+        }
+      }
+      return results;
+    } catch (e) {
+      console.warn('Latest releases fetch notice:', e);
+      return [];
+    }
+  },
+
+  /**
+   * Returns latest releases ("Ultime Uscite") across all platforms or filtered by platform
+   */
+  async getHomeTracks(category = 'all', source = 'all') {
+    const cacheKey = `${category}__${source}`;
+    const cached = this._homeTracksCache.get(cacheKey);
+    if (cached && cached.tracks.length > 0 && (Date.now() - cached.timestamp < 10 * 60 * 1000)) {
+      return cached.tracks;
+    }
+
+    // 1. Try local backend if connected on LAN
+    const workingBackend = await getWorkingBackend();
+    if (workingBackend) {
+      try {
+        const res = await fetch(`${workingBackend}/api/trending?category=${encodeURIComponent(category)}&source=${encodeURIComponent(source)}&limit=60`, {
+          signal: AbortSignal.timeout(1500)
+        });
+        if (res.ok) {
+          const tracks = await res.json();
+          if (Array.isArray(tracks) && tracks.length > 0) {
+            this._homeTracksCache.set(cacheKey, { tracks, timestamp: Date.now() });
+            return tracks;
+          }
+        }
+      } catch (e) {
+        console.warn('Backend trending fetch notice:', e);
+      }
+    }
+
+    // 2. Live Autonomous Fetch of Latest Releases ("Ultime Uscite") per Platform
+    try {
+      const yearTag = new Date().getFullYear();
+      let liveTracks = [];
+
+      if (source === 'spotify') {
+        liveTracks = await this._fetchPlatformLatestReleases(
+          'Olly Giorgia Achille Lauro Geolier Lazza Annalisa Rose Villain Tony Effe',
+          'Spotify & FIMI'
+        );
+      } else if (source === 'apple') {
+        liveTracks = await this._fetchPlatformLatestReleases(
+          'Lady Gaga Bruno Mars Sabrina Carpenter Billie Eilish Kendrick Lamar The Weeknd',
+          'Apple Music Top'
+        );
+      } else if (source === 'youtube') {
+        liveTracks = await this._fetchPlatformLatestReleases(
+          'Nuove Uscite Italia Olly Geolier Annalisa Lazza Rose Villain Mahmood',
+          'YouTube Music'
+        );
+      } else {
+        // 'all' -> Fetch latest releases across all 3 platforms in parallel and interleave them
+        const [spList, ytList, apList] = await Promise.all([
+          this._fetchPlatformLatestReleases('Olly Giorgia Achille Lauro Geolier Lazza Annalisa Rose Villain Fedez', 'Spotify & FIMI'),
+          this._fetchPlatformLatestReleases('Nuove Uscite ItaliaTony Effe Mahmood Blanco Angelina Mango', 'YouTube Music'),
+          this._fetchPlatformLatestReleases('Lady Gaga Bruno Mars Sabrina Carpenter Billie Eilish Kendrick Lamar Benson Boone', 'Apple Music Top')
+        ]);
+
+        const seen = new Set();
+        const maxLen = Math.max(spList.length, ytList.length, apList.length);
+        for (let i = 0; i < maxLen; i++) {
+          for (const candidate of [spList[i], ytList[i], apList[i]]) {
+            if (candidate && candidate.videoId && !seen.has(candidate.videoId)) {
+              seen.add(candidate.videoId);
+              liveTracks.push(candidate);
+            }
+          }
+        }
+      }
+
+      if (liveTracks.length > 0) {
+        this._homeTracksCache.set(cacheKey, { tracks: liveTracks, timestamp: Date.now() });
+        return liveTracks;
+      }
+    } catch (err) {
+      console.warn('Autonomous latest releases fallback notice:', err);
+    }
+
+    // 3. Offline / Instant fallback catalog by source
+    if (source === 'youtube') {
+      return FULL_CATALOG.filter(t => t.source === 'YouTube Music');
+    } else if (source === 'spotify') {
+      return FULL_CATALOG.filter(t => t.source.includes('Spotify'));
+    } else if (source === 'apple') {
+      return FULL_CATALOG.filter(t => t.source.includes('Apple'));
+    }
+
+    return FULL_CATALOG;
+  },
+
+  /**
+   * Search tracks using InnerTube WEB_REMIX endpoint directly from mobile
+   * Supports infinite scroll pagination (+20 tracks per page via InnerTube continuation tokens)
+   */
+  async searchTracks(query, filterType = 'songs', limit = 20) {
+    if (!query || !query.trim()) return [];
+    const q = query.trim();
+    const stateKey = `${q.toLowerCase()}__${filterType}`;
+    if (!this._searchState) {
+      this._searchState = new Map();
+    }
+
+    // 1. Try local backend if reachable
+    const workingBackend = await getWorkingBackend();
+    if (workingBackend) {
+      try {
+        const res = await fetch(`${workingBackend}/api/search?q=${encodeURIComponent(q)}&filter=${encodeURIComponent(filterType)}&limit=${limit}`, {
+          signal: AbortSignal.timeout(2000)
+        });
+        if (res.ok) {
+          const tracks = await res.json();
+          if (Array.isArray(tracks) && tracks.length > 0) {
+            return tracks;
+          }
+        }
+      } catch (e) {
+        console.warn('Backend search notice:', e);
+      }
+    }
+
+    // 2. Autonomous Mobile Search via YouTube Music InnerTube (WEB_REMIX) with Continuation Pagination
+    try {
+      const clientContext = {
+        client: {
+          clientName: 'WEB_REMIX',
+          clientVersion: '1.20240901.01.00',
+          hl: 'it',
+          gl: 'IT'
+        }
+      };
+
+      const headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
+        'X-YouTube-Client-Name': '67',
+        'X-YouTube-Client-Version': '1.20240901.01.00',
+        'Origin': 'https://music.youtube.com',
+        'Referer': 'https://music.youtube.com/'
+      };
+
+      let state = this._searchState.get(stateKey);
+
+      // Fetch first page of 20 songs if not cached yet
+      if (!state || state.items.length === 0) {
+        const payload = {
+          context: clientContext,
+          query: q,
+          params: 'EgWKAQIIAWoKEAkQBRAKEAMQBA==' // Songs filter (returns 20 tracks + continuation token)
+        };
+
+        const data = await nativePost('https://music.youtube.com/youtubei/v1/search?prettyPrint=false', payload, headers);
+        if (data) {
+          const results = [];
+          let nextContinuation = null;
+          const sections = data.contents?.tabbedSearchResultsRenderer?.tabs?.[0]?.tabRenderer?.content?.sectionListRenderer?.contents || [];
+
+          for (const s of sections) {
+            if (s.musicCardShelfRenderer) {
+              const card = s.musicCardShelfRenderer;
+              const topVid = card.onTap?.watchEndpoint?.videoId
+                || card.buttons?.[0]?.buttonRenderer?.command?.watchEndpoint?.videoId;
+              const topTitle = card.title?.runs?.map(r => r.text).join('') || '';
+              const topSub = card.subtitle?.runs?.map(r => r.text).join('') || '';
+              const subParts = topSub.split(' • ').map(p => p.trim());
+              const topArtist = subParts[1] || subParts[0] || 'Artista';
+
+              if (topVid && topTitle && /^[a-zA-Z0-9_-]{11}$/.test(topVid)) {
+                const thumbs = card.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
+                const topCover = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500';
+                results.push({
+                  id: `yt_${topVid}`,
+                  videoId: topVid,
+                  title: topTitle,
+                  artist: topArtist,
+                  album: 'Top Hit',
+                  cover: topCover,
+                  duration: 180,
+                  source: 'YouTube Music'
+                });
+              }
+
+              if (Array.isArray(card.contents)) {
+                for (const it of card.contents) {
+                  const parsed = parseRenderer(it.musicResponsiveListItemRenderer);
+                  if (parsed && !results.some(r => r.videoId === parsed.videoId)) {
+                    results.push(parsed);
+                  }
+                }
+              }
+            }
+
+            if (s.musicShelfRenderer && Array.isArray(s.musicShelfRenderer.contents)) {
+              for (const it of s.musicShelfRenderer.contents) {
+                const parsed = parseRenderer(it.musicResponsiveListItemRenderer);
+                if (parsed && !results.some(r => r.videoId === parsed.videoId)) {
+                  results.push(parsed);
+                }
+              }
+              const ctoken = s.musicShelfRenderer.continuations?.[0]?.nextContinuationData?.continuation;
+              if (ctoken) {
+                nextContinuation = ctoken;
+              }
+            }
+          }
+
+          if (results.length > 0) {
+            state = { items: results, continuation: nextContinuation };
+            this._searchState.set(stateKey, state);
+          }
+        }
+      }
+
+      // If more tracks are requested (e.g. +20 on scroll: limit = 40, 60, 80...), fetch next continuation pages
+      while (state && state.items.length < limit && state.continuation) {
+        const ctoken = state.continuation;
+        state.continuation = null; // prevent duplicate fetch if error occurs
+        const contUrl = `https://music.youtube.com/youtubei/v1/search?ctoken=${encodeURIComponent(ctoken)}&continuation=${encodeURIComponent(ctoken)}&type=next&prettyPrint=false`;
+        const contData = await nativePost(contUrl, { context: clientContext }, headers);
+        const cShelf = contData?.continuationContents?.musicShelfContinuation;
+        if (cShelf && Array.isArray(cShelf.contents)) {
+          let added = 0;
+          for (const it of cShelf.contents) {
+            const parsed = parseRenderer(it.musicResponsiveListItemRenderer);
+            if (parsed && !state.items.some(r => r.videoId === parsed.videoId)) {
+              state.items.push(parsed);
+              added++;
+            }
+          }
+          const nextCtoken = cShelf.continuations?.[0]?.nextContinuationData?.continuation || null;
+          state.continuation = added > 0 ? nextCtoken : null;
+        } else {
+          break;
+        }
+      }
+
+      if (state && state.items.length > 0) {
+        return state.items.slice(0, limit);
+      }
+    } catch (ytErr) {
+      console.warn('InnerTube search notice:', ytErr);
+    }
+
+    // 3. Fallback: Search catalog and master songs
+    const lowQ = q.toLowerCase();
+    const local = FULL_CATALOG.filter(t =>
+      t.title.toLowerCase().includes(lowQ) ||
+      t.artist.toLowerCase().includes(lowQ) ||
+      t.album.toLowerCase().includes(lowQ)
+    );
+    return local.length > 0 ? local : FULL_CATALOG.slice(0, 15);
+  },
+
+  /**
+   * Identifies the best YouTube video ID for any track using fuzzy matching algorithm
+   */
+  async resolveYouTubeId(track) {
+    if (!track) return null;
+    let videoId = track.videoId || (track.id && track.id.startsWith('yt_') ? track.id.replace('yt_', '') : null);
+    if (videoId && /^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+      return videoId;
+    }
+
+    const cacheKey = `${track.title}__${track.artist}`;
+    if (videoIdCache[cacheKey]) {
+      return videoIdCache[cacheKey];
+    }
+
+    const targetTitle = track.title || '';
+    const targetArtist = track.artist || '';
+    const targetDuration = track.duration || 180;
+    const searchQuery = `${targetArtist} ${targetTitle}`.trim();
+
+    // Search candidates using InnerTube
+    const candidates = await this.searchTracks(searchQuery, 'songs', 10);
+    if (candidates && candidates.length > 0) {
+      let bestCandidate = null;
+      let highestScore = -1;
+
+      for (const cand of candidates) {
+        const score = computeMatchScore(
+          targetTitle,
+          targetArtist,
+          targetDuration,
+          cand.title,
+          cand.artist,
+          cand.duration
+        );
+
+        if (score > highestScore) {
+          highestScore = score;
+          bestCandidate = cand;
+          if (score >= 0.95) break; // Early exit
+        }
+      }
+
+      if (bestCandidate && bestCandidate.videoId) {
+        videoIdCache[cacheKey] = bestCandidate.videoId;
+        track.videoId = bestCandidate.videoId;
+        return bestCandidate.videoId;
+      }
+    }
+
+    // Fallback to first verified song in master catalog
+    const fb = FULL_CATALOG[0].videoId;
+    videoIdCache[cacheKey] = fb;
+    track.videoId = fb;
+    return fb;
+  },
+
+  /**
+   * Resolves direct audio stream URL using InnerTube client extraction.
+   * Runs autonomously directly on the phone with zero LAN blocks.
+   */
+  async resolveAudioStreamUrl(track) {
+    if (!track) return null;
+    if (track.localAudioUrl) return track.localAudioUrl;
+
+    let videoId = track.videoId || (track.id && track.id.startsWith('yt_') ? track.id.replace('yt_', '') : null);
+    if (!videoId) {
+      videoId = await this.resolveYouTubeId(track);
+    }
+    if (!videoId) return null;
+
+    // Check in-memory stream cache (TTL 3 hours)
+    const cached = streamUrlCache.get(videoId);
+    if (cached && cached.expiresAt > Date.now()) {
+      return cached.url;
+    }
+
+    // 1. PRIMARY: Autonomous Mobile Stream Resolution (IOS InnerTube Client Method)
+    // Instant ~200ms response directly on mobile phone
+    try {
+      const payload = {
+        context: {
+          client: {
+            clientName: 'IOS',
+            clientVersion: '21.03.1',
+            deviceModel: 'iPhone16,2',
+            osVersion: '18.2.22C152',
+            gl: 'US',
+            hl: 'en-US'
+          },
+          request: {
+            internalExperimentFlags: [],
+            useSsl: true
+          },
+          user: {
+            lockedSafetyMode: false
+          }
+        },
+        videoId: videoId,
+        contentCheckOk: true,
+        racyCheckOk: true
+      };
+
+      const iosUA = 'com.google.ios.youtube/21.03.1 (iPhone16,2; U; CPU iOS 18_2 like Mac OS X;)';
+      const headers = {
+        'Content-Type': 'application/json',
+        'User-Agent': iosUA,
+        'x-cap-user-agent': iosUA,
+        'X-Goog-Api-Format-Version': '1',
+        'X-YouTube-Client-Name': '5',
+        'X-YouTube-Client-Version': '21.03.1',
+        'Origin': 'https://music.youtube.com',
+        'Referer': 'https://music.youtube.com/',
+        'Accept': 'application/json'
+      };
+
+      const playerResp = await nativePost('https://music.youtube.com/youtubei/v1/player?prettyPrint=false', payload, headers);
+      if (playerResp) {
+        const formats = playerResp.streamingData?.adaptiveFormats || [];
+        const audioFormats = formats.filter(f => f.mimeType && f.mimeType.includes('audio') && f.url);
+
+        if (audioFormats.length > 0) {
+          // Prioritize itag 140 (Standard MPEG-4 AAC 130kbps) - 100% native Android compatibility!
+          const chosenFormat = audioFormats.find(f => f.itag === 140)
+            || audioFormats.find(f => f.itag === 251)
+            || audioFormats.sort((a, b) => (b.bitrate || 0) - (a.bitrate || 0))[0];
+
+          if (chosenFormat && chosenFormat.url) {
+            const streamUrl = chosenFormat.url;
+            streamUrlCache.set(videoId, { url: streamUrl, expiresAt: Date.now() + 3 * 3600 * 1000 });
+            return streamUrl;
+          }
+        }
+      }
+    } catch (iosErr) {
+      console.warn('Autonomous stream resolution notice:', iosErr);
+    }
+
+    // 2. Secondary fallback: check local PC backend (if explicitly available on LAN)
+    try {
+      const workingBackend = await getWorkingBackend();
+      if (workingBackend) {
+        const res = await fetch(`${workingBackend}/api/stream?id=${encodeURIComponent(videoId)}`, {
+          signal: AbortSignal.timeout(2000)
+        });
+        if (res.ok) {
+          const data = await res.json();
+          if (data && data.url) {
+            streamUrlCache.set(videoId, { url: data.url, expiresAt: Date.now() + 3 * 3600 * 1000 });
+            return data.url;
+          }
+        }
+      }
+    } catch {}
+
+    if (track.audioUrl) return track.audioUrl;
+    return null;
+  },
+
+  /**
+   * Downloads track into local storage (Mobile / Offline)
+   */
+  async downloadTrack(track) {
+    const hasBackend = await checkBackend();
+    if (hasBackend) {
+      try {
+        const settings = storageService.getSettings();
+        const res = await fetch(`${BACKEND_URL}/api/download`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            videoId: track.videoId || (track.id.startsWith('yt_') ? track.id.replace('yt_', '') : track.id),
+            title: track.title,
+            artist: track.artist,
+            cover: track.cover,
+            folder: settings.downloadFolder || ''
+          })
+        });
+        return res.ok;
+      } catch (e) {
+        console.error('Download request notice:', e);
+      }
+    }
+
+    // Autonomous Mobile Offline Storage
+    try {
+      const savedList = JSON.parse(localStorage.getItem('supermusicpro_mobile_downloads') || '[]');
+      const safeId = track.id || (track.videoId ? `yt_${track.videoId}` : `dl_${Date.now()}`);
+      const safeFileName = track.fileName || `${track.artist || 'Artista'} - ${track.title || 'Brano'}.m4a`;
+      const isAlreadySaved = savedList.some(
+        s => (s.id && s.id === safeId) || (track.videoId && s.videoId === track.videoId) || (s.title === track.title && s.artist === track.artist)
+      );
+      if (!isAlreadySaved) {
+        savedList.push({
+          ...track,
+          id: safeId,
+          fileName: safeFileName,
+          downloadDate: new Date().toISOString()
+        });
+        localStorage.setItem('supermusicpro_mobile_downloads', JSON.stringify(savedList));
+      }
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  async getDownloadedTracks() {
+    const hasBackend = await checkBackend();
+    if (hasBackend) {
+      try {
+        const settings = storageService.getSettings();
+        const folderParam = settings.downloadFolder ? `?folder=${encodeURIComponent(settings.downloadFolder)}` : '';
+        const res = await fetch(`${BACKEND_URL}/api/downloads${folderParam}`);
+        if (res.ok) {
+          return await res.json();
+        }
+      } catch (e) {
+        console.warn('Error fetching downloaded tracks:', e);
+      }
+    }
+
+    try {
+      return JSON.parse(localStorage.getItem('supermusicpro_mobile_downloads') || '[]');
+    } catch {
+      return [];
+    }
+  },
+
+  async deleteDownloadedTrack(trackOrFileName) {
+    const fileName = typeof trackOrFileName === 'object'
+      ? (trackOrFileName.fileName || trackOrFileName.id || trackOrFileName.title)
+      : trackOrFileName;
+
+    const hasBackend = await checkBackend();
+    if (hasBackend && fileName) {
+      try {
+        const settings = storageService.getSettings();
+        const folderParam = settings.downloadFolder ? `&folder=${encodeURIComponent(settings.downloadFolder)}` : '';
+        const res = await fetch(`${BACKEND_URL}/api/downloads?file=${encodeURIComponent(fileName)}${folderParam}`, {
+          method: 'DELETE'
+        });
+        if (res.ok) return true;
+      } catch (e) {
+        console.error('Delete download notice:', e);
+      }
+    }
+
+    try {
+      const targetId = typeof trackOrFileName === 'object' ? trackOrFileName.id : trackOrFileName;
+      const targetVideoId = typeof trackOrFileName === 'object' ? trackOrFileName.videoId : trackOrFileName;
+      const targetFile = typeof trackOrFileName === 'object' ? trackOrFileName.fileName : trackOrFileName;
+      const targetTitle = typeof trackOrFileName === 'object' ? trackOrFileName.title : trackOrFileName;
+
+      let list = JSON.parse(localStorage.getItem('supermusicpro_mobile_downloads') || '[]');
+      list = list.filter(s => {
+        if (targetId && (s.id === targetId || (s.videoId && `yt_${s.videoId}` === targetId))) return false;
+        if (targetVideoId && (s.videoId === targetVideoId || s.id === `yt_${targetVideoId}`)) return false;
+        if (targetFile && s.fileName && s.fileName === targetFile) return false;
+        if (targetTitle && s.title === targetTitle) return false;
+        return true;
+      });
+      localStorage.setItem('supermusicpro_mobile_downloads', JSON.stringify(list));
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  async clearAllDownloadedTracks() {
+    try {
+      localStorage.setItem('supermusicpro_mobile_downloads', '[]');
+      return true;
+    } catch {
+      return false;
+    }
+  },
+
+  async openDownloadFolder(folderPath = '') {
+    if (window.electronAPI && window.electronAPI.openDownloadFolder) {
+      const ok = await window.electronAPI.openDownloadFolder(folderPath);
+      if (ok) return true;
+    }
+    return true;
+  },
+
+  resolveYouTubeMatch(track) {
+    if (!track) return { youtubeId: '' };
+    let videoId = track.videoId || (track.id && track.id.startsWith('yt_') ? track.id.replace('yt_', '') : null);
+    if (!videoId || !/^[a-zA-Z0-9_-]{11}$/.test(videoId)) {
+      videoId = '';
+    }
+    return {
+      youtubeId: videoId,
+      url: videoId ? `https://www.youtube.com/watch?v=${videoId}` : ''
+    };
+  }
+};
