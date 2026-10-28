@@ -17,7 +17,6 @@ import QueueView from './components/QueueView';
 import GlitchEasterEgg from './components/GlitchEasterEgg';
 import MobileNavBar from './components/MobileNavBar';
 import SongRecognitionModal from './components/SongRecognitionModal';
-import { StatusBar, Style } from '@capacitor/status-bar';
 
 import { musicService, FULL_CATALOG } from './services/musicService';
 import { storageService } from './services/storageService';
@@ -92,8 +91,7 @@ export default function App() {
     // Configure native Android status bar if on Capacitor
     try {
       if (typeof window !== 'undefined' && window.Capacitor?.isNativePlatform?.()) {
-        StatusBar.setOverlaysWebView({ overlay: true }).catch(() => {});
-        StatusBar.setStyle({ style: Style.Dark }).catch(() => {});
+
       }
     } catch {}
   }, [settings.theme]);
