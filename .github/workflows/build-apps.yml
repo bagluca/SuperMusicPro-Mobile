@@ -39,6 +39,10 @@ jobs:
           node-version: 22
           cache: 'npm'
 
+      - name: Prepara dipendenze iOS pulite
+        run: |
+          node -e "const p = require('./package.json'); delete p.dependencies['@capacitor/status-bar']; delete p.dependencies['@capacitor/preferences']; delete p.dependencies['@capacitor/filesystem']; require('fs').writeFileSync('./package.json', JSON.stringify(p, null, 2))"
+
       - name: Installa Dipendenze
         run: npm install
 
