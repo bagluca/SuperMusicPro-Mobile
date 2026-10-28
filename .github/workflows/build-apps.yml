@@ -51,13 +51,13 @@ jobs:
           mkdir -p build/Payload
           cp -r build/App.xcarchive/Products/Applications/App.app build/Payload/
           cd build
-          zip -r SuperMusic_PRO_v2.3.0.ipa Payload
+          zip -r SuperMusic_PRO_v2.4.0.ipa Payload
 
       - name: 📦 Salva Artefatto iOS (.ipa)
         uses: actions/upload-artifact@v4
         with:
-          name: SuperMusic_PRO_iOS_v2.3.0.ipa
-          path: build/SuperMusic_PRO_v2.3.0.ipa
+          name: SuperMusic_PRO_iOS_v2.4.0.ipa
+          path: build/SuperMusic_PRO_v2.4.0.ipa
           retention-days: 30
 
   build-android:
@@ -100,6 +100,6 @@ jobs:
       - name: 📦 Salva Artefatto Android (.apk)
         uses: actions/upload-artifact@v4
         with:
-          name: SuperMusic_PRO_Android_v2.3.0.apk
+          name: SuperMusic_PRO_Android_v2.4.0.apk
           path: android/app/build/outputs/apk/debug/app-debug.apk
           retention-days: 30
