@@ -10,6 +10,7 @@ const KEYS = {
   SETTINGS: 'supermusicpro_settings',
   MATCH_OVERRIDES: 'supermusicpro_match_overrides',
   MATCH_CACHE: 'supermusicpro_match_cache',
+  LAST_TRACK: 'supermusicpro_last_track',
 };
 
 const DEFAULT_SETTINGS = {
@@ -185,8 +186,30 @@ export const storageService = {
       list = list.filter(s => s.id !== song.id);
       list = [{ ...song, playedAt: Date.now() }, ...list].slice(0, 50);
       localStorage.setItem(KEYS.HISTORY, JSON.stringify(list));
+      this.saveLastTrack(song);
     } catch (e) {
       console.error('History save error:', e);
+    }
+  },
+
+  getLastTrack() {
+    try {
+      const data = localStorage.getItem(KEYS.LAST_TRACK);
+      if (data) return JSON.parse(data);
+      const history = this.getHistory();
+      if (history && history.length > 0) return history[0];
+      return null;
+    } catch {
+      return null;
+    }
+  },
+
+  saveLastTrack(track) {
+    if (!track) return;
+    try {
+      localStorage.setItem(KEYS.LAST_TRACK, JSON.stringify(track));
+    } catch (e) {
+      console.error('Failed to save last track:', e);
     }
   },
 

@@ -47,7 +47,7 @@ export default function App() {
   const [selectedSource, setSelectedSource] = useState('all');
 
   const [tracks, setTracks] = useState(() => musicService.getCachedHomeTracks());
-  const [currentTrack, setCurrentTrack] = useState(null);
+  const [currentTrack, setCurrentTrack] = useState(() => storageService.getLastTrack() || null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [queue, setQueue] = useState([]);
   const [playbackContext, setPlaybackContext] = useState({
@@ -98,13 +98,20 @@ export default function App() {
     return map;
   }, [likedSongs]);
 
+  // Save last listened track
+  useEffect(() => {
+    if (currentTrack) {
+      storageService.saveLastTrack(currentTrack);
+    }
+  }, [currentTrack]);
+
   // Load trending tracks from open sources
   useEffect(() => {
     let isMounted = true;
     musicService.getHomeTracks(selectedCategory, selectedSource).then(loaded => {
       if (isMounted && Array.isArray(loaded) && loaded.length > 0) {
         setTracks(loaded);
-        if (!currentTrack) {
+        if (!currentTrackRef.current) {
           setCurrentTrack(loaded[0]);
         }
       }

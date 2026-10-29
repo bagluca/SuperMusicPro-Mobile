@@ -317,6 +317,7 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         } catch (Exception ignored) {}
 
         loadFavoritesAndPlaylistsFromStorage();
+        loadLastTrackFromStorage();
         initDefaultCatalog();
         executorService.execute(() -> {
             try {
@@ -540,6 +541,11 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                 public void onPlay() {
                     if (exoPlayer != null && exoPlayer.getPlaybackState() != Player.STATE_IDLE && exoPlayer.getPlaybackState() != Player.STATE_ENDED) {
                         exoPlayer.play();
+                    } else if (currentVideoId != null && !currentVideoId.isEmpty()) {
+                        isPlaying = true;
+                        setMediaSessionBuffering();
+                        startForegroundWithNotification();
+                        playTrackNatively(null, currentVideoId);
                     } else {
                         playDjSmartMix();
                     }
@@ -579,9 +585,14 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                     if (mediaId == null) return;
                     setMediaSessionBuffering();
 
-                    if (MEDIA_ID_NOW_PLAYING.equals(mediaId)) {
+                    if (MEDIA_ID_NOW_PLAYING.equals(mediaId) || "last_track".equals(mediaId)) {
                         if (exoPlayer != null && exoPlayer.getPlaybackState() != Player.STATE_IDLE && exoPlayer.getPlaybackState() != Player.STATE_ENDED) {
                             exoPlayer.play();
+                        } else if (currentVideoId != null && !currentVideoId.isEmpty()) {
+                            isPlaying = true;
+                            setMediaSessionBuffering();
+                            startForegroundWithNotification();
+                            playTrackNatively(null, currentVideoId);
                         } else {
                             playDjSmartMix();
                         }
@@ -691,7 +702,16 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         }
 
         if (ACTION_PLAY.equals(action)) {
-            if (exoPlayer != null) exoPlayer.play();
+            if (exoPlayer != null && exoPlayer.getPlaybackState() != Player.STATE_IDLE && exoPlayer.getPlaybackState() != Player.STATE_ENDED) {
+                exoPlayer.play();
+            } else if (currentVideoId != null && !currentVideoId.isEmpty()) {
+                isPlaying = true;
+                setMediaSessionBuffering();
+                startForegroundWithNotification();
+                playTrackNatively(null, currentVideoId);
+            } else {
+                playDjSmartMix();
+            }
             return START_NOT_STICKY;
         }
 
@@ -730,6 +750,7 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void playTrackNatively(String directUrl, String videoId) {
+        saveLastTrackToStorage(currentTitle, currentArtist, currentCover, (videoId != null && !videoId.isEmpty()) ? videoId : currentVideoId);
         executorService.execute(() -> {
             String playableUrl = directUrl;
             String resolvedVid = videoId;
@@ -741,6 +762,7 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                 if (resolvedVid != null && !resolvedVid.isEmpty()) {
                     currentVideoId = resolvedVid;
                     Log.d(TAG, "Found videoId via native search: " + resolvedVid);
+                    saveLastTrackToStorage(currentTitle, currentArtist, currentCover, resolvedVid);
                 }
             }
 
@@ -1292,6 +1314,31 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         } catch (Exception e) {
             Log.e(TAG, "Error loading favorites/playlists from storage", e);
         }
+    }
+
+    private void saveLastTrackToStorage(String title, String artist, String cover, String videoId) {
+        try {
+            android.content.SharedPreferences prefs = getSharedPreferences("supermusic_native_prefs", Context.MODE_PRIVATE);
+            prefs.edit()
+                    .putString("last_track_title", title)
+                    .putString("last_track_artist", artist)
+                    .putString("last_track_cover", cover)
+                    .putString("last_track_video_id", videoId)
+                    .apply();
+        } catch (Exception ignored) {}
+    }
+
+    private void loadLastTrackFromStorage() {
+        try {
+            android.content.SharedPreferences prefs = getSharedPreferences("supermusic_native_prefs", Context.MODE_PRIVATE);
+            String title = prefs.getString("last_track_title", null);
+            if (title != null && !title.isEmpty()) {
+                currentTitle = title;
+                currentArtist = prefs.getString("last_track_artist", "SuperMusic PRO");
+                currentCover = prefs.getString("last_track_cover", "");
+                currentVideoId = prefs.getString("last_track_video_id", "");
+            }
+        } catch (Exception ignored) {}
     }
 
     private void initDefaultCatalog() {
@@ -2444,6 +2491,20 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         // 2. TAB "TUTTI" (All) -> Layout a griglia 2 colonne stile Spotify Home con 8 card + DJ Banner
         if (TAB_ALL.equals(parentId)) {
             List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
+
+            // Ultimo brano ascoltato (se disponibile)
+            if (currentTitle != null && !currentTitle.isEmpty() && currentVideoId != null && !currentVideoId.isEmpty()) {
+                Bundle bLast = new Bundle();
+                bLast.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
+                MediaDescriptionCompat dLast = new MediaDescriptionCompat.Builder()
+                        .setMediaId("last_track")
+                        .setTitle("▶ " + currentTitle)
+                        .setSubtitle("Ultimo brano ascoltato • " + currentArtist)
+                        .setIconUri(currentCover != null && !currentCover.isEmpty() ? Uri.parse(currentCover) : Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_tab_music"))
+                        .setExtras(bLast)
+                        .build();
+                items.add(new MediaBrowserCompat.MediaItem(dLast, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+            }
 
             // Card 1: Liked Songs / Brani Preferiti
             int fCount = 0;
