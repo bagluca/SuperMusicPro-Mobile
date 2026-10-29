@@ -61,6 +61,7 @@ import java.io.InputStream;
 import java.net.HttpURLConnection;
 import java.net.URL;
 import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -73,11 +74,20 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     private static final String TAG = "MusicPlayerService";
 
     public static final String MEDIA_ROOT_ID = "supermusic_root_id";
+    public static final String TAB_ALL = "tab_all";
+    public static final String TAB_MUSIC = "tab_music";
+    public static final String TAB_TRENDING = "tab_trending";
+    public static final String TAB_FAVORITES = "tab_favorites";
+
     public static final String MEDIA_ID_NOW_PLAYING = "supermusic_now_playing";
     public static final String MEDIA_ID_QUEUE = "supermusic_cat_queue";
     public static final String MEDIA_ID_FAVORITES = "supermusic_cat_favorites";
     public static final String MEDIA_ID_PLAYLISTS = "supermusic_cat_playlists";
     public static final String MEDIA_ID_TRENDING = "supermusic_cat_trending";
+    public static final String MEDIA_ID_NEW_RELEASES = "supermusic_cat_new_releases";
+    public static final String MEDIA_ID_MOST_PLAYED = "supermusic_cat_most_played";
+    public static final String MEDIA_ID_DAILY_MIX = "supermusic_cat_daily_mix";
+    public static final String MEDIA_ID_DJ = "supermusic_cat_dj";
     public static final String MEDIA_ID_GENRES = "supermusic_cat_genres";
     public static final String MEDIA_ID_SEARCH = "supermusic_cat_search";
     public static final String MEDIA_ID_LOCAL = "supermusic_local_library";
@@ -260,7 +270,11 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                             nativeTrending.add(item);
                         }
                     }
-                    mainHandler.post(() -> notifyChildrenChanged(MEDIA_ROOT_ID));
+                    mainHandler.post(() -> {
+                        notifyChildrenChanged(TAB_ALL);
+                        notifyChildrenChanged(TAB_TRENDING);
+                        notifyChildrenChanged(MEDIA_ID_TRENDING);
+                    });
                 }
 
                 List<InnerTubeTrack> liveNew = fetchInnerTubeTracks("Nuove Uscite Italia", 15);
@@ -277,7 +291,10 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                             nativeNewReleases.add(item);
                         }
                     }
-                    mainHandler.post(() -> notifyChildrenChanged(MEDIA_ROOT_ID));
+                    mainHandler.post(() -> {
+                        notifyChildrenChanged(TAB_ALL);
+                        notifyChildrenChanged(MEDIA_ID_NEW_RELEASES);
+                    });
                 }
             } catch (Exception ignored) {}
         });
@@ -473,6 +490,8 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
 
                     if (MEDIA_ID_NOW_PLAYING.equals(mediaId)) {
                         if (exoPlayer != null) exoPlayer.play();
+                    } else if (MEDIA_ID_DJ.equals(mediaId)) {
+                        playDjSmartMix();
                     } else if (mediaId.startsWith("queue_track:")) {
                         playQueueTrack(mediaId);
                     } else if (mediaId.startsWith("fav_track:")) {
@@ -1254,9 +1273,17 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
 
         mainHandler.post(() -> {
             notifyChildrenChanged(MEDIA_ROOT_ID);
+            notifyChildrenChanged(TAB_ALL);
+            notifyChildrenChanged(TAB_MUSIC);
+            notifyChildrenChanged(TAB_TRENDING);
+            notifyChildrenChanged(TAB_FAVORITES);
             notifyChildrenChanged(MEDIA_ID_QUEUE);
             notifyChildrenChanged(MEDIA_ID_FAVORITES);
             notifyChildrenChanged(MEDIA_ID_PLAYLISTS);
+            notifyChildrenChanged(MEDIA_ID_TRENDING);
+            notifyChildrenChanged(MEDIA_ID_NEW_RELEASES);
+            notifyChildrenChanged(MEDIA_ID_MOST_PLAYED);
+            notifyChildrenChanged(MEDIA_ID_DAILY_MIX);
         });
     }
 
@@ -1683,6 +1710,42 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         }
     }
 
+    private void playDjSmartMix() {
+        try {
+            NativeTrackItem target = null;
+            synchronized (nativeQueue) {
+                if (!nativeFavorites.isEmpty()) {
+                    nativeQueue.clear();
+                    nativeQueue.addAll(nativeFavorites);
+                    Collections.shuffle(nativeQueue);
+                    nativeQueueIndex = 0;
+                    target = nativeQueue.get(0);
+                } else if (!nativeTrending.isEmpty()) {
+                    nativeQueue.clear();
+                    nativeQueue.addAll(nativeTrending);
+                    Collections.shuffle(nativeQueue);
+                    nativeQueueIndex = 0;
+                    target = nativeQueue.get(0);
+                }
+            }
+            if (target != null) {
+                currentTitle = target.title != null ? target.title : "SuperMusic PRO";
+                currentArtist = target.artist != null ? target.artist : "DJ Smart Mix";
+                currentCover = target.cover != null ? target.cover : "";
+                currentVideoId = target.videoId != null ? target.videoId : "";
+                hasRetriedNatively = false;
+                isPlaying = true;
+
+                setMediaSessionBuffering();
+                startForegroundWithNotification();
+                playTrackNatively(target.url, target.videoId);
+                MusicNotificationPlugin.dispatchTrackChanged(currentTitle, currentArtist, currentCover, currentVideoId, nativeQueueIndex);
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "playDjSmartMix error", e);
+        }
+    }
+
     private void playAndroidAutoSearch(String query) {
         setMediaSessionBuffering();
         executorService.execute(() -> {
@@ -1735,13 +1798,21 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     private MediaBrowserCompat.MediaItem createGenreCategoryItem(String id, String title, String subtitle) {
         Bundle extras = new Bundle();
         extras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
-        MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+        MediaDescriptionCompat.Builder builder = new MediaDescriptionCompat.Builder()
                 .setMediaId(id)
                 .setTitle(title)
                 .setSubtitle(subtitle)
-                .setExtras(extras)
-                .build();
-        return new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE);
+                .setExtras(extras);
+        if (id.startsWith("search:Nuove")) {
+            builder.setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_new_releases"));
+        } else if (id.startsWith("search:Hit") || id.contains("pop")) {
+            builder.setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_trending"));
+        } else if (id.contains("dance")) {
+            builder.setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_dj"));
+        } else {
+            builder.setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_tab_music"));
+        }
+        return new MediaBrowserCompat.MediaItem(builder.build(), MediaBrowserCompat.MediaItem.FLAG_BROWSABLE);
     }
 
     private List<MediaBrowserCompat.MediaItem> getDefaultFallbackItems() {
@@ -1932,15 +2003,252 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     public void onLoadChildren(@NonNull String parentId, @NonNull Result<List<MediaBrowserCompat.MediaItem>> result) {
         Log.d(TAG, "Android Auto onLoadChildren for parentId: " + parentId);
 
+        // 1. ROOT -> Mostra esattamente 4 Tab / Pills in alto (come Spotify: Tutti, Musica, Tendenze, Preferiti)
         if (MEDIA_ROOT_ID.equals(parentId)) {
             List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
 
-            // 1. SEZIONE PRINCIPALE: 🔥 MUSICA DI TENDENZA (Brani direttamente riproducibili a righe)
+            Bundle bAll = new Bundle();
+            bAll.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat descAll = new MediaDescriptionCompat.Builder()
+                    .setMediaId(TAB_ALL)
+                    .setTitle("Tutti")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_tab_all"))
+                    .setExtras(bAll)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(descAll, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            Bundle bMusic = new Bundle();
+            bMusic.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat descMusic = new MediaDescriptionCompat.Builder()
+                    .setMediaId(TAB_MUSIC)
+                    .setTitle("Musica")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_tab_music"))
+                    .setExtras(bMusic)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(descMusic, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            Bundle bTrend = new Bundle();
+            bTrend.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat descTrend = new MediaDescriptionCompat.Builder()
+                    .setMediaId(TAB_TRENDING)
+                    .setTitle("Tendenze")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_tab_trending"))
+                    .setExtras(bTrend)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(descTrend, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            Bundle bFav = new Bundle();
+            bFav.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat descFav = new MediaDescriptionCompat.Builder()
+                    .setMediaId(TAB_FAVORITES)
+                    .setTitle("Preferiti")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_tab_favorites"))
+                    .setExtras(bFav)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(descFav, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            result.sendResult(items);
+            return;
+        }
+
+        // 2. TAB "TUTTI" (All) -> Layout a griglia 2 colonne stile Spotify Home con 8 card + DJ Banner
+        if (TAB_ALL.equals(parentId)) {
+            List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
+
+            // Card 1: Liked Songs / Brani Preferiti
+            int fCount = 0;
+            synchronized (nativeFavorites) { fCount = nativeFavorites.size(); }
+            Bundle bFav = new Bundle();
+            bFav.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dFav = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_FAVORITES)
+                    .setTitle("Brani Preferiti")
+                    .setSubtitle(fCount > 0 ? (fCount + " brani salvati") : "I tuoi brani con il cuore")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_favorites"))
+                    .setExtras(bFav)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dFav, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            // Card 2: Canzoni da Viaggio / Hit del Momento
+            Bundle bTr = new Bundle();
+            bTr.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dTr = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_TRENDING)
+                    .setTitle("Hit del Momento")
+                    .setSubtitle("Le canzoni più ascoltate in Italia")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_trending"))
+                    .setExtras(bTr)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dTr, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            // Card 3: Ultime Uscite (Discover)
+            Bundle bRel = new Bundle();
+            bRel.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dRel = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_NEW_RELEASES)
+                    .setTitle("Ultime Uscite")
+                    .setSubtitle("I nuovi singoli e uscite fresche")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_new_releases"))
+                    .setExtras(bRel)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dRel, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            // Card 4: Coda di Riproduzione
+            int qCount = 0;
+            synchronized (nativeQueue) { qCount = nativeQueue.size(); }
+            Bundle bQueue = new Bundle();
+            bQueue.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dQueue = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_QUEUE)
+                    .setTitle("Coda di Riproduzione")
+                    .setSubtitle(qCount > 0 ? (qCount + " brani in sequenza") : "Coda attiva dall'app")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_queue"))
+                    .setExtras(bQueue)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dQueue, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            // Card 5: Playlist Personali
+            int pCount = 0;
+            synchronized (nativePlaylists) { pCount = nativePlaylists.size(); }
+            Bundle bPl = new Bundle();
+            bPl.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dPl = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_PLAYLISTS)
+                    .setTitle("Le Mie Playlist")
+                    .setSubtitle(pCount > 0 ? (pCount + " playlist create") : "Le tue playlist personali")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_playlists"))
+                    .setExtras(bPl)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dPl, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            // Card 6: I Più Ascoltati (On Repeat)
+            Bundle bMost = new Bundle();
+            bMost.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dMost = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_MOST_PLAYED)
+                    .setTitle("I Più Ascoltati")
+                    .setSubtitle("I brani che riascolti più spesso")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_most_played"))
+                    .setExtras(bMost)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dMost, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            // Card 7: Mix Giornaliero (Daylist)
+            Bundle bDay = new Bundle();
+            bDay.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dDay = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_DAILY_MIX)
+                    .setTitle("Mix Giornaliero")
+                    .setSubtitle("Selezione smart per il tuo viaggio")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_daylist"))
+                    .setExtras(bDay)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dDay, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            // Card 8: Cerca Musica
+            Bundle bSearch = new Bundle();
+            bSearch.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dSearch = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_SEARCH)
+                    .setTitle("Cerca Musica")
+                    .setSubtitle("Generi musicali e artisti")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_tab_music"))
+                    .setExtras(bSearch)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dSearch, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            // Card 9: BANNER SPOTIFY DJ: "DJ SuperMusic" (Playable)
+            Bundle bDj = new Bundle();
+            bDj.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
+            MediaDescriptionCompat dDj = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_DJ)
+                    .setTitle("⚡ DJ SuperMusic")
+                    .setSubtitle("Lascia scegliere la musica al DJ • Tocca per avviare")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_dj"))
+                    .setExtras(bDj)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dDj, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+
+            result.sendResult(items);
+            return;
+        }
+
+        // 3. TAB "MUSICA" -> Libreria musicale
+        if (TAB_MUSIC.equals(parentId)) {
+            List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
+
+            int qCount = 0;
+            synchronized (nativeQueue) { qCount = nativeQueue.size(); }
+            Bundle bQueue = new Bundle();
+            bQueue.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dQueue = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_QUEUE)
+                    .setTitle("📋 Coda di Riproduzione")
+                    .setSubtitle(qCount > 0 ? (qCount + " brani in sequenza") : "Coda corrente")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_queue"))
+                    .setExtras(bQueue)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dQueue, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            int pCount = 0;
+            synchronized (nativePlaylists) { pCount = nativePlaylists.size(); }
+            Bundle bPl = new Bundle();
+            bPl.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dPl = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_PLAYLISTS)
+                    .setTitle("🎵 Le Mie Playlist")
+                    .setSubtitle(pCount > 0 ? (pCount + " playlist salvate") : "Le tue playlist personali")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_playlists"))
+                    .setExtras(bPl)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dPl, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            int fCount = 0;
+            synchronized (nativeFavorites) { fCount = nativeFavorites.size(); }
+            Bundle bFav = new Bundle();
+            bFav.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dFav = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_FAVORITES)
+                    .setTitle("❤️ Brani Preferiti")
+                    .setSubtitle(fCount > 0 ? (fCount + " canzoni") : "I tuoi preferiti")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_favorites"))
+                    .setExtras(bFav)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dFav, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            Bundle bMost = new Bundle();
+            bMost.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dMost = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_MOST_PLAYED)
+                    .setTitle("🎧 I Più Ascoltati")
+                    .setSubtitle("I brani che riascolti più spesso")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_most_played"))
+                    .setExtras(bMost)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dMost, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            Bundle bSearch = new Bundle();
+            bSearch.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            MediaDescriptionCompat dSearch = new MediaDescriptionCompat.Builder()
+                    .setMediaId(MEDIA_ID_SEARCH)
+                    .setTitle("🔍 Cerca Musica")
+                    .setSubtitle("Generi musicali e artisti")
+                    .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_tab_music"))
+                    .setExtras(bSearch)
+                    .build();
+            items.add(new MediaBrowserCompat.MediaItem(dSearch, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+
+            result.sendResult(items);
+            return;
+        }
+
+        // 4. TAB "TENDENZE" o CARTELLA "HIT DEL MOMENTO"
+        if (TAB_TRENDING.equals(parentId) || MEDIA_ID_TRENDING.equals(parentId)) {
+            List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
             synchronized (nativeTrending) {
                 for (NativeTrackItem t : nativeTrending) {
                     Bundle itemExtras = new Bundle();
                     itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
-                    itemExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "🔥 Musica di Tendenza");
                     MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
                             .setMediaId("track:" + (t.videoId != null ? t.videoId : "") + ":" + Uri.encode(t.title) + ":" + Uri.encode(t.artist) + ":" + Uri.encode(t.cover != null ? t.cover : ""))
                             .setTitle(t.title)
@@ -1951,13 +2259,19 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                     items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
                 }
             }
+            if (!items.isEmpty()) {
+                result.sendResult(items);
+                return;
+            }
+        }
 
-            // 2. SEZIONE: ✨ ULTIME USCITE (Brani nuovi a righe)
+        // 5. ULTIME USCITE
+        if (MEDIA_ID_NEW_RELEASES.equals(parentId)) {
+            List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
             synchronized (nativeNewReleases) {
                 for (NativeTrackItem t : nativeNewReleases) {
                     Bundle itemExtras = new Bundle();
                     itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
-                    itemExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "✨ Ultime Uscite");
                     MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
                             .setMediaId("track:" + (t.videoId != null ? t.videoId : "") + ":" + Uri.encode(t.title) + ":" + Uri.encode(t.artist) + ":" + Uri.encode(t.cover != null ? t.cover : ""))
                             .setTitle(t.title)
@@ -1968,58 +2282,73 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                     items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
                 }
             }
+            if (!items.isEmpty()) {
+                result.sendResult(items);
+                return;
+            }
+        }
 
-            // 3. SEZIONE: 🎧 LA MIA MUSICA (Coda, Preferiti, Playlist, Cerca)
-            Bundle queueExtras = new Bundle();
-            queueExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
-            queueExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "🎧 La Mia Musica");
-            int qCount = 0;
-            synchronized (nativeQueue) { qCount = nativeQueue.size(); }
-            MediaDescriptionCompat descQueue = new MediaDescriptionCompat.Builder()
-                    .setMediaId(MEDIA_ID_QUEUE)
-                    .setTitle("📋 Coda di Riproduzione")
-                    .setSubtitle(qCount > 0 ? (qCount + " brani in sequenza dall'app") : "I brani in coda")
-                    .setExtras(queueExtras)
-                    .build();
-            items.add(new MediaBrowserCompat.MediaItem(descQueue, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
+        // 6. I PIÙ ASCOLTATI
+        if (MEDIA_ID_MOST_PLAYED.equals(parentId)) {
+            List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
+            synchronized (nativeFavorites) {
+                if (!nativeFavorites.isEmpty()) {
+                    for (int i = 0; i < Math.min(15, nativeFavorites.size()); i++) {
+                        NativeTrackItem t = nativeFavorites.get(i);
+                        Bundle itemExtras = new Bundle();
+                        itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
+                        MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+                                .setMediaId("fav_track:" + i + ":" + (t.videoId != null ? t.videoId : "") + ":" + Uri.encode(t.title) + ":" + Uri.encode(t.artist) + ":" + Uri.encode(t.cover != null ? t.cover : ""))
+                                .setTitle(t.title)
+                                .setSubtitle(t.artist)
+                                .setIconUri(t.cover != null && !t.cover.isEmpty() ? Uri.parse(t.cover) : null)
+                                .setExtras(itemExtras)
+                                .build();
+                        items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+                    }
+                }
+            }
+            if (items.isEmpty()) {
+                synchronized (nativeTrending) {
+                    for (int i = 0; i < Math.min(15, nativeTrending.size()); i++) {
+                        NativeTrackItem t = nativeTrending.get(i);
+                        Bundle itemExtras = new Bundle();
+                        itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
+                        MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+                                .setMediaId("track:" + (t.videoId != null ? t.videoId : "") + ":" + Uri.encode(t.title) + ":" + Uri.encode(t.artist) + ":" + Uri.encode(t.cover != null ? t.cover : ""))
+                                .setTitle(t.title)
+                                .setSubtitle(t.artist)
+                                .setIconUri(t.cover != null && !t.cover.isEmpty() ? Uri.parse(t.cover) : null)
+                                .setExtras(itemExtras)
+                                .build();
+                        items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+                    }
+                }
+            }
+            result.sendResult(items);
+            return;
+        }
 
-            Bundle favExtras = new Bundle();
-            favExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
-            favExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "🎧 La Mia Musica");
-            int fCount = 0;
-            synchronized (nativeFavorites) { fCount = nativeFavorites.size(); }
-            MediaDescriptionCompat descFav = new MediaDescriptionCompat.Builder()
-                    .setMediaId(MEDIA_ID_FAVORITES)
-                    .setTitle("❤️ Brani Preferiti")
-                    .setSubtitle(fCount > 0 ? (fCount + " canzoni salvate") : "I tuoi brani preferiti")
-                    .setExtras(favExtras)
-                    .build();
-            items.add(new MediaBrowserCompat.MediaItem(descFav, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
-
-            Bundle plExtras = new Bundle();
-            plExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
-            plExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "🎧 La Mia Musica");
-            int pCount = 0;
-            synchronized (nativePlaylists) { pCount = nativePlaylists.size(); }
-            MediaDescriptionCompat descPl = new MediaDescriptionCompat.Builder()
-                    .setMediaId(MEDIA_ID_PLAYLISTS)
-                    .setTitle("🎵 Playlist Personali")
-                    .setSubtitle(pCount > 0 ? (pCount + " playlist create") : "Le tue playlist")
-                    .setExtras(plExtras)
-                    .build();
-            items.add(new MediaBrowserCompat.MediaItem(descPl, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
-
-            Bundle searchExtras = new Bundle();
-            searchExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
-            searchExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "🎧 La Mia Musica");
-            MediaDescriptionCompat descSearch = new MediaDescriptionCompat.Builder()
-                    .setMediaId(MEDIA_ID_SEARCH)
-                    .setTitle("🔍 Cerca Musica")
-                    .setSubtitle("Cerca qualsiasi brano o artista")
-                    .setExtras(searchExtras)
-                    .build();
-            items.add(new MediaBrowserCompat.MediaItem(descSearch, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
-
+        // 7. MIX GIORNALIERO (Daylist)
+        if (MEDIA_ID_DAILY_MIX.equals(parentId)) {
+            List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
+            List<NativeTrackItem> pool = new ArrayList<>();
+            synchronized (nativeFavorites) { pool.addAll(nativeFavorites); }
+            synchronized (nativeTrending) { pool.addAll(nativeTrending); }
+            Collections.shuffle(pool);
+            for (int i = 0; i < Math.min(20, pool.size()); i++) {
+                NativeTrackItem t = pool.get(i);
+                Bundle itemExtras = new Bundle();
+                itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
+                MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+                        .setMediaId("track:" + (t.videoId != null ? t.videoId : "") + ":" + Uri.encode(t.title) + ":" + Uri.encode(t.artist) + ":" + Uri.encode(t.cover != null ? t.cover : ""))
+                        .setTitle(t.title)
+                        .setSubtitle(t.artist)
+                        .setIconUri(t.cover != null && !t.cover.isEmpty() ? Uri.parse(t.cover) : null)
+                        .setExtras(itemExtras)
+                        .build();
+                items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+            }
             result.sendResult(items);
             return;
         }
@@ -2048,6 +2377,7 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                         .setMediaId(MEDIA_ID_NOW_PLAYING)
                         .setTitle("Coda vuota")
                         .setSubtitle("Avvia un brano o una playlist dall'app")
+                        .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_queue"))
                         .setExtras(itemExtras)
                         .build();
                 items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
@@ -2056,7 +2386,7 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
             return;
         }
 
-        if (MEDIA_ID_FAVORITES.equals(parentId)) {
+        if (MEDIA_ID_FAVORITES.equals(parentId) || TAB_FAVORITES.equals(parentId)) {
             List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
             synchronized (nativeQueue) {
                 for (int i = 0; i < nativeFavorites.size(); i++) {
@@ -2079,7 +2409,8 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                 MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
                         .setMediaId(MEDIA_ID_NOW_PLAYING)
                         .setTitle("Nessun brano preferito")
-                        .setSubtitle("Aggiungi brani ai preferiti nell'app")
+                        .setSubtitle("Aggiungi i brani ai preferiti con il cuore nell'app")
+                        .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_favorites"))
                         .setExtras(itemExtras)
                         .build();
                 items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
@@ -2112,6 +2443,7 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                         .setMediaId(MEDIA_ID_NOW_PLAYING)
                         .setTitle("Nessuna playlist creata")
                         .setSubtitle("Crea una playlist nell'app")
+                        .setIconUri(Uri.parse("android.resource://" + getPackageName() + "/drawable/ic_card_playlists"))
                         .setExtras(itemExtras)
                         .build();
                 items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
