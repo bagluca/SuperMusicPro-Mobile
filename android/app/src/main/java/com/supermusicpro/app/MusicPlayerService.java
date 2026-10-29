@@ -166,20 +166,79 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     private Bitmap cachedCoverBitmap = null;
     private String cachedCoverUrl = null;
     private volatile String loadingCoverUrl = null;
+    private long lastMediaSessionSyncMs = 0;
 
     private final Handler progressHandler = new Handler(Looper.getMainLooper());
     private final Runnable progressRunnable = new Runnable() {
         @Override
         public void run() {
-            if (MainActivity.isActivityResumed && exoPlayer != null && exoPlayer.isPlaying()) {
+            if (exoPlayer != null && exoPlayer.isPlaying()) {
                 long posMs = exoPlayer.getCurrentPosition();
                 long durMs = exoPlayer.getDuration();
                 long durSec = durMs > 0 ? durMs / 1000 : 180;
-                MusicNotificationPlugin.dispatchPlaybackProgress((double) posMs / 1000.0, durSec);
+
+                if (MainActivity.isActivityResumed) {
+                    MusicNotificationPlugin.dispatchPlaybackProgress((double) posMs / 1000.0, durSec);
+                }
+
+                // Sync MediaSession position with real ExoPlayer timestamp periodically (every 2.5s)
+                // This guarantees Android Auto's progress bar never drifts and stays 100% in sync with audio!
+                long now = android.os.SystemClock.elapsedRealtime();
+                if (now - lastMediaSessionSyncMs >= 2500) {
+                    lastMediaSessionSyncMs = now;
+                    syncMediaSessionPosition(posMs);
+                }
             }
             progressHandler.postDelayed(this, 350);
         }
     };
+
+    public void syncMediaSessionPosition(long posMs) {
+        if (mediaSession == null || exoPlayer == null) return;
+        try {
+            long actions = PlaybackStateCompat.ACTION_PLAY |
+                    PlaybackStateCompat.ACTION_PAUSE |
+                    PlaybackStateCompat.ACTION_PLAY_PAUSE |
+                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS |
+                    PlaybackStateCompat.ACTION_SEEK_TO |
+                    PlaybackStateCompat.ACTION_STOP |
+                    PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID |
+                    PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH;
+
+            int state = exoPlayer.isPlaying() ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED;
+            if (exoPlayer.getPlaybackState() == Player.STATE_BUFFERING) {
+                state = PlaybackStateCompat.STATE_BUFFERING;
+            }
+
+            mediaSession.setPlaybackState(
+                    new PlaybackStateCompat.Builder()
+                            .setActions(actions)
+                            .setState(state, posMs, 1.0f)
+                            .build()
+            );
+
+            long durMs = exoPlayer.getDuration();
+            if (durMs > 0) {
+                MediaMetadataCompat currentMeta = mediaSession.getController().getMetadata();
+                long metaDur = currentMeta != null ? currentMeta.getLong(MediaMetadataCompat.METADATA_KEY_DURATION) : 0;
+                if (metaDur <= 0 || Math.abs(metaDur - durMs) > 1000) {
+                    MediaMetadataCompat.Builder metaBuilder = new MediaMetadataCompat.Builder()
+                            .putString(MediaMetadataCompat.METADATA_KEY_TITLE, currentTitle)
+                            .putString(MediaMetadataCompat.METADATA_KEY_ARTIST, currentArtist)
+                            .putString(MediaMetadataCompat.METADATA_KEY_ALBUM, "SuperMusic PRO")
+                            .putLong(MediaMetadataCompat.METADATA_KEY_DURATION, durMs);
+
+                    if (cachedCoverBitmap != null) {
+                        metaBuilder.putBitmap(MediaMetadataCompat.METADATA_KEY_ALBUM_ART, cachedCoverBitmap);
+                    }
+                    mediaSession.setMetadata(metaBuilder.build());
+                }
+            }
+        } catch (Exception e) {
+            Log.e(TAG, "Error syncing MediaSession position", e);
+        }
+    }
 
     public void syncWithUiNow() {
         mainHandler.post(() -> {
@@ -393,6 +452,8 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                     } else if (playbackState == Player.STATE_ENDED) {
                         Log.d(TAG, "ExoPlayer is ENDED");
                         handleAction(ACTION_NEXT);
+                    } else if (playbackState == Player.STATE_BUFFERING) {
+                        setMediaSessionBuffering();
                     }
                 }
 
@@ -498,6 +559,7 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                 public void onSeekTo(long pos) {
                     if (exoPlayer != null) {
                         exoPlayer.seekTo(pos);
+                        syncMediaSessionPosition(pos);
                     }
                 }
 
@@ -603,6 +665,7 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
             long seekMs = intent.getLongExtra(EXTRA_SEEK_MS, 0);
             if (exoPlayer != null) {
                 exoPlayer.seekTo(seekMs);
+                syncMediaSessionPosition(seekMs);
             }
             return START_NOT_STICKY;
         }
@@ -1359,6 +1422,9 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
             }
 
             int state = isPlaying ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED;
+            if (exoPlayer != null && exoPlayer.getPlaybackState() == Player.STATE_BUFFERING) {
+                state = PlaybackStateCompat.STATE_BUFFERING;
+            }
             long actions = PlaybackStateCompat.ACTION_PLAY |
                     PlaybackStateCompat.ACTION_PAUSE |
                     PlaybackStateCompat.ACTION_PLAY_PAUSE |

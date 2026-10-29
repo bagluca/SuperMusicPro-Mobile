@@ -108,9 +108,9 @@ export default function PlayerBar({
 
   return (
     <footer className="relative h-14 md:h-22 theme-bg-secondary/95 border-t theme-border px-3 md:px-6 flex items-center justify-between backdrop-blur-xl select-none z-40 flex-shrink-0">
-      {/* Mobile-only sleek edge scrubber */}
+      {/* Mobile-only sleek neon edge scrubber */}
       <div 
-        className="sm:hidden absolute top-0 left-0 right-0 h-1 bg-slate-800/80 cursor-pointer overflow-hidden z-20"
+        className="sm:hidden absolute top-0 left-0 right-0 h-1.5 bg-slate-850 cursor-pointer overflow-hidden z-20"
         onClick={(e) => {
           const rect = e.currentTarget.getBoundingClientRect();
           const clickX = e.clientX - rect.left;
@@ -121,9 +121,13 @@ export default function PlayerBar({
         }}
       >
         <div 
-          className="h-full bg-emerald-400 transition-all duration-150"
+          className="h-full bg-gradient-to-r from-emerald-500 via-teal-300 to-emerald-400 relative transition-all duration-100 shadow-[0_0_12px_rgba(16,185,129,0.95),0_0_3px_#34d399]"
           style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
-        />
+        >
+          {isPlaying && (
+            <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-white/95 shadow-[0_0_8px_#34d399] animate-pulse" />
+          )}
+        </div>
       </div>
       {/* Track details (Left) */}
       <div className="flex items-center space-x-3 flex-1 md:w-1/4 md:flex-initial min-w-0 md:min-w-[210px]">
@@ -251,10 +255,20 @@ export default function PlayerBar({
           </button>
         </div>
 
-        {/* Progress bar */}
+        {/* Progress bar with Spotify-style neon glow */}
         <div className="hidden sm:flex w-full items-center space-x-2 text-[10px] md:text-[11px] text-slate-400 font-mono">
-          <span className="w-8 text-right">{formatTime(currentTime)}</span>
+          <span className="w-8 text-right text-emerald-400/90">{formatTime(currentTime)}</span>
           <div className="relative flex-1 flex items-center group cursor-pointer py-1">
+            <div className="w-full h-1 group-hover:h-1.5 bg-slate-800 rounded-full overflow-hidden transition-all relative">
+              <div 
+                className="h-full bg-gradient-to-r from-emerald-500 via-teal-300 to-emerald-400 rounded-full transition-all duration-100 shadow-[0_0_12px_rgba(16,185,129,0.9),0_0_4px_#34d399] relative"
+                style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+              >
+                {isPlaying && (
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/35 to-transparent animate-pulse" />
+                )}
+              </div>
+            </div>
             <input
               type="range"
               min="0"
@@ -262,7 +276,7 @@ export default function PlayerBar({
               step="0.1"
               value={currentTime}
               onChange={handleSeek}
-              className="w-full h-1 bg-slate-700 rounded-lg appearance-none cursor-pointer accent-emerald-400 group-hover:h-1.5 transition-all"
+              className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
             />
           </div>
           <span className="w-8">{formatTime(duration)}</span>
