@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Play, 
   Pause, 
@@ -56,17 +56,24 @@ export default function PlayerBar({
   const [isMuted, setIsMuted] = useState(false);
   const [isShuffle, setIsShuffle] = useState(false);
   const [isRepeat, setIsRepeat] = useState(false);
+  const [isDragging, setIsDragging] = useState(false);
+  const [dragTime, setDragTime] = useState(null);
+
+  const isDraggingRef = useRef(false);
+  const mobileScrubberRef = useRef(null);
 
   useEffect(() => {
     const unsubTime = audioEngine.on('timeupdate', ({ currentTime: nextTime, duration: nextDur }) => {
-      setCurrentTime(prev => (Math.floor(prev) === Math.floor(nextTime) ? prev : nextTime));
-      if (nextDur) {
+      if (!isDraggingRef.current) {
+        setCurrentTime(prev => (Math.floor(prev) === Math.floor(nextTime) ? prev : nextTime));
+      }
+      if (nextDur && !isNaN(nextDur) && nextDur > 0) {
         setDuration(prev => (Math.floor(prev) === Math.floor(nextDur) ? prev : nextDur));
       }
     });
 
     const unsubMeta = audioEngine.on('loadedmetadata', ({ duration: nextDur }) => {
-      if (nextDur) setDuration(nextDur);
+      if (nextDur && !isNaN(nextDur) && nextDur > 0) setDuration(nextDur);
     });
 
     const unsubVol = audioEngine.on('volumechange', ({ volume: nextVol, isMuted: nextMuted }) => {
@@ -80,6 +87,64 @@ export default function PlayerBar({
       unsubVol();
     };
   }, []);
+
+  const updateScrubFromClientX = (clientX) => {
+    const el = mobileScrubberRef.current;
+    if (!el) return undefined;
+    const rect = el.getBoundingClientRect();
+    if (rect.width <= 0) return undefined;
+    const clickX = clientX - rect.left;
+    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
+    const seekTime = ratio * (duration || 180);
+    setDragTime(seekTime);
+    setCurrentTime(seekTime);
+    return seekTime;
+  };
+
+  const handlePointerDown = (e) => {
+    e.preventDefault();
+    e.stopPropagation();
+    try {
+      e.currentTarget.setPointerCapture(e.pointerId);
+    } catch {}
+    isDraggingRef.current = true;
+    setIsDragging(true);
+    updateScrubFromClientX(e.clientX);
+  };
+
+  const handlePointerMove = (e) => {
+    if (!isDraggingRef.current) return;
+    e.preventDefault();
+    e.stopPropagation();
+    updateScrubFromClientX(e.clientX);
+  };
+
+  const handlePointerUp = (e) => {
+    if (isDraggingRef.current) {
+      e.preventDefault();
+      e.stopPropagation();
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
+      const calculated = updateScrubFromClientX(e.clientX);
+      const targetTime = calculated !== undefined ? calculated : (dragTime !== null ? dragTime : currentTime);
+      audioEngine.seek(targetTime);
+      isDraggingRef.current = false;
+      setIsDragging(false);
+      setDragTime(null);
+    }
+  };
+
+  const handlePointerCancel = (e) => {
+    if (isDraggingRef.current) {
+      try {
+        e.currentTarget.releasePointerCapture(e.pointerId);
+      } catch {}
+      isDraggingRef.current = false;
+      setIsDragging(false);
+      setDragTime(null);
+    }
+  };
 
   const handleSeek = (e) => {
     const val = parseFloat(e.target.value);
@@ -104,28 +169,48 @@ export default function PlayerBar({
     );
   }
 
-  const progressPercent = duration > 0 ? (currentTime / duration) * 100 : 0;
+  const effectiveTime = dragTime !== null ? dragTime : currentTime;
+  const progressPercent = duration > 0 ? (effectiveTime / duration) * 100 : 0;
 
   return (
     <footer className="relative h-14 md:h-22 theme-bg-secondary/95 border-t theme-border px-3 md:px-6 flex items-center justify-between backdrop-blur-xl select-none z-40 flex-shrink-0">
-      {/* Mobile-only sleek neon edge scrubber */}
+      {/* Mobile-only sleek neon touch-draggable scrubber */}
       <div 
-        className="sm:hidden absolute top-0 left-0 right-0 h-1.5 bg-slate-850 cursor-pointer overflow-hidden z-20"
-        onClick={(e) => {
-          const rect = e.currentTarget.getBoundingClientRect();
-          const clickX = e.clientX - rect.left;
-          const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-          const seekTime = ratio * (duration || 180);
-          setCurrentTime(seekTime);
-          audioEngine.seek(seekTime);
-        }}
+        ref={mobileScrubberRef}
+        onPointerDown={handlePointerDown}
+        onPointerMove={handlePointerMove}
+        onPointerUp={handlePointerUp}
+        onPointerCancel={handlePointerCancel}
+        className="sm:hidden absolute -top-3 left-0 right-0 h-8 flex items-center cursor-pointer select-none touch-none z-30 px-0"
+        title="Trascina per scorrere il brano"
       >
-        <div 
-          className="h-full bg-gradient-to-r from-emerald-500 via-teal-300 to-emerald-400 relative transition-all duration-100 shadow-[0_0_12px_rgba(16,185,129,0.95),0_0_3px_#34d399]"
-          style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
-        >
-          {isPlaying && (
-            <div className="absolute right-0 top-0 bottom-0 w-2.5 bg-white/95 shadow-[0_0_8px_#34d399] animate-pulse" />
+        <div className={`w-full bg-slate-800/90 relative transition-all duration-100 ${isDragging ? 'h-2 bg-slate-700' : 'h-1.5'}`}>
+          {/* Progress fill */}
+          <div 
+            className="h-full bg-gradient-to-r from-emerald-500 via-teal-300 to-emerald-400 relative shadow-[0_0_12px_rgba(16,185,129,0.95),0_0_3px_#34d399]"
+            style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+          />
+
+          {/* Draggable Neon Thumb Knob */}
+          <div 
+            className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full bg-white border-2 border-emerald-400 pointer-events-none transition-transform ${
+              isDragging 
+                ? 'w-5 h-5 scale-125 shadow-[0_0_18px_#10b981,0_0_6px_#fff]' 
+                : 'w-3.5 h-3.5 shadow-[0_0_8px_rgba(16,185,129,0.9)]'
+            }`}
+            style={{ left: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+          />
+
+          {/* Floating Time Preview Tooltip while dragging */}
+          {isDragging && (
+            <div 
+              className="absolute -top-9 -translate-x-1/2 bg-slate-900/95 text-white font-mono text-[11px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/60 shadow-2xl pointer-events-none whitespace-nowrap z-50 flex items-center gap-1 backdrop-blur-md"
+              style={{ left: `${Math.min(90, Math.max(10, progressPercent))}%` }}
+            >
+              <span className="text-emerald-400">{formatTime(effectiveTime)}</span>
+              <span className="text-slate-500">/</span>
+              <span className="text-slate-400">{formatTime(duration)}</span>
+            </div>
           )}
         </div>
       </div>
@@ -257,7 +342,7 @@ export default function PlayerBar({
 
         {/* Progress bar with Spotify-style neon glow */}
         <div className="hidden sm:flex w-full items-center space-x-2 text-[10px] md:text-[11px] text-slate-400 font-mono">
-          <span className="w-8 text-right text-emerald-400/90">{formatTime(currentTime)}</span>
+          <span className="w-8 text-right text-emerald-400/90">{formatTime(effectiveTime)}</span>
           <div className="relative flex-1 flex items-center group cursor-pointer py-1">
             <div className="w-full h-1 group-hover:h-1.5 bg-slate-800 rounded-full overflow-hidden transition-all relative">
               <div 
@@ -274,8 +359,28 @@ export default function PlayerBar({
               min="0"
               max={duration || 100}
               step="0.1"
-              value={currentTime}
-              onChange={handleSeek}
+              value={effectiveTime}
+              onMouseDown={() => { isDraggingRef.current = true; setIsDragging(true); }}
+              onTouchStart={() => { isDraggingRef.current = true; setIsDragging(true); }}
+              onChange={(e) => {
+                const val = parseFloat(e.target.value);
+                setDragTime(val);
+                setCurrentTime(val);
+              }}
+              onMouseUp={(e) => {
+                const val = parseFloat(e.target.value);
+                audioEngine.seek(val);
+                isDraggingRef.current = false;
+                setIsDragging(false);
+                setDragTime(null);
+              }}
+              onTouchEnd={(e) => {
+                const val = parseFloat(e.target.value);
+                audioEngine.seek(val);
+                isDraggingRef.current = false;
+                setIsDragging(false);
+                setDragTime(null);
+              }}
               className="absolute inset-0 w-full h-full opacity-0 cursor-pointer z-10"
             />
           </div>

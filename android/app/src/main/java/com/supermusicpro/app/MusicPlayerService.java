@@ -276,6 +276,10 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         mainHandler.post(() -> {
             if (exoPlayer != null) {
                 exoPlayer.seekTo(seekMs);
+                syncMediaSessionPosition(seekMs);
+                long durMs = exoPlayer.getDuration();
+                long durSec = durMs > 0 ? durMs / 1000 : 180;
+                MusicNotificationPlugin.dispatchPlaybackProgress((double) seekMs / 1000.0, durSec);
             }
         });
     }
