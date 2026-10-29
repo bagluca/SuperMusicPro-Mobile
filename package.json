@@ -1,6 +1,6 @@
 {
   "name": "supermusicpro",
-  "version": "2.3.6",
+  "version": "2.3.7",
   "description": "SuperMusicPro - Pure YouTube Music Desktop Player & Downloader",
   "main": "main.js",
   "scripts": {

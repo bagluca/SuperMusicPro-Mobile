@@ -161,13 +161,23 @@ export default function App() {
 
     const unsubNativeTrack = audioEngine.on('nativetrackchange', (trackData) => {
       if (trackData && trackData.title) {
-        setCurrentTrack(prev => ({
-          ...prev,
+        const newTrack = {
           title: trackData.title,
           artist: trackData.artist,
           cover: trackData.cover,
           videoId: trackData.videoId,
-          id: trackData.videoId ? `yt_${trackData.videoId}` : (prev?.id || `track_${Date.now()}`)
+          id: trackData.videoId ? `yt_${trackData.videoId}` : `track_${Date.now()}`
+        };
+        const ctxTracks = playbackContextRef.current?.tracks || tracksRef.current;
+        if (ctxTracks && Array.isArray(ctxTracks) && ctxTracks.length > 0) {
+          const idx = ctxTracks.findIndex(t => isSameTrack(t, newTrack));
+          if (idx !== -1) {
+            setQueue(ctxTracks.slice(idx + 1));
+          }
+        }
+        setCurrentTrack(prev => ({
+          ...prev,
+          ...newTrack
         }));
       }
     });
@@ -184,9 +194,33 @@ export default function App() {
 
   // Sync active queue, favorites, playlists, and catalog to Android Auto & background native service
   useEffect(() => {
-    const fullQueue = currentTrack ? [currentTrack, ...queue] : queue;
-    audioEngine.syncAppData(fullQueue, 0, likedSongs, playlists, tracks);
-  }, [queue, currentTrack, likedSongs, playlists, tracks]);
+    let listToSync = [];
+    let activeIdx = 0;
+
+    const ctxTracks = (playbackContext && playbackContext.tracks && playbackContext.tracks.length > 0)
+      ? playbackContext.tracks
+      : tracks;
+
+    if (ctxTracks && Array.isArray(ctxTracks) && ctxTracks.length > 0 && currentTrack) {
+      const idx = ctxTracks.findIndex(t => isSameTrack(t, currentTrack));
+      if (idx !== -1) {
+        listToSync = ctxTracks;
+        activeIdx = idx;
+      }
+    }
+
+    if (listToSync.length === 0) {
+      if (currentTrack) {
+        listToSync = [currentTrack, ...queue];
+        activeIdx = 0;
+      } else {
+        listToSync = queue;
+        activeIdx = 0;
+      }
+    }
+
+    audioEngine.syncAppData(listToSync, activeIdx, likedSongs, playlists, tracks);
+  }, [queue, currentTrack, likedSongs, playlists, tracks, playbackContext]);
 
   // Global Keyboard shortcuts
   useEffect(() => {
