@@ -102,94 +102,97 @@ export default function DownloadsView({
   };
 
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden px-3 md:px-8 py-3 md:py-6 space-y-4 md:space-y-6 select-none max-w-full">
-      {/* Header Banner */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800/80 pb-4 md:pb-5 gap-3 md:gap-4">
-        <div className="flex items-center space-x-3 md:space-x-3.5">
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shadow-lg shrink-0">
-            <FolderDown className="w-5 h-5 md:w-6 md:h-6" />
-          </div>
-          <div className="min-w-0">
-            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2 flex-wrap">
-              <span>Libreria Locale</span>
-              <span className="text-[11px] md:text-xs bg-emerald-500/20 text-emerald-300 font-mono px-2 py-0.5 rounded-full border border-emerald-500/30">
-                {downloads.length} brani
-              </span>
-            </h1>
-            <p className="text-xs text-slate-400 mt-0.5 truncate">
-              Archivio offline su memoria locale
-            </p>
-          </div>
-        </div>
-
-        <div className="flex items-center flex-wrap gap-2">
-          {sortedDownloads.length > 0 && onPlayAll && (
-            <button
-              onClick={() => onPlayAll(sortedDownloads, { type: 'local', title: 'Libreria Locale' })}
-              className="px-3.5 py-1.5 md:py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-emerald-500/25 active:scale-95 shrink-0"
-              title="Riproduci tutti i brani della libreria locale"
-            >
-              <Play className="w-4 h-4 fill-slate-950 text-slate-950" />
-              <span>Riproduci Tutti</span>
-            </button>
-          )}
-
-          {downloads.length > 1 && (
-            <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/60 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 shadow-sm shrink-0">
-              <ArrowUpDown className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
-              <select
-                value={sortBy}
-                onChange={(e) => setSortBy(e.target.value)}
-                className="bg-transparent text-white font-semibold text-xs focus:outline-none cursor-pointer pr-1"
-                title="Ordina i brani della libreria"
-              >
-                <option value="default" className="bg-slate-900 text-white">Download recenti</option>
-                <option value="title-asc" className="bg-slate-900 text-white">Brano (A - Z)</option>
-                <option value="title-desc" className="bg-slate-900 text-white">Brano (Z - A)</option>
-                <option value="artist-asc" className="bg-slate-900 text-white">Artista (A - Z)</option>
-                <option value="artist-desc" className="bg-slate-900 text-white">Artista (Z - A)</option>
-              </select>
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden select-none max-w-full">
+      {/* Fixed Header Banner */}
+      <div className="shrink-0 px-3 md:px-8 pt-3 md:pt-5 pb-3 md:pb-4 border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 md:gap-4">
+          <div className="flex items-center space-x-3 md:space-x-3.5">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl md:rounded-2xl bg-emerald-500/20 text-emerald-400 flex items-center justify-center border border-emerald-500/30 shadow-lg shrink-0">
+              <FolderDown className="w-5 h-5 md:w-6 md:h-6" />
             </div>
-          )}
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2 flex-wrap">
+                <span>Libreria Locale</span>
+                <span className="text-[11px] md:text-xs bg-emerald-500/20 text-emerald-300 font-mono px-2 py-0.5 rounded-full border border-emerald-500/30">
+                  {downloads.length} brani
+                </span>
+              </h1>
+              <p className="text-xs text-slate-400 mt-0.5 truncate">
+                Archivio offline su memoria locale
+              </p>
+            </div>
+          </div>
 
-          {downloads.length > 0 && (
+          <div className="flex items-center flex-wrap gap-2">
+            {sortedDownloads.length > 0 && onPlayAll && (
+              <button
+                onClick={() => onPlayAll(sortedDownloads, { type: 'local', title: 'Libreria Locale' })}
+                className="px-3.5 py-1.5 md:py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 text-xs font-bold flex items-center gap-1.5 transition-all shadow-lg shadow-emerald-500/25 active:scale-95 shrink-0"
+                title="Riproduci tutti i brani della libreria locale"
+              >
+                <Play className="w-4 h-4 fill-slate-950 text-slate-950" />
+                <span>Riproduci Tutti</span>
+              </button>
+            )}
+
+            {downloads.length > 1 && (
+              <div className="flex items-center gap-1.5 bg-slate-900/90 border border-slate-700/60 rounded-xl px-2.5 py-1.5 text-xs text-slate-300 shadow-sm shrink-0">
+                <ArrowUpDown className="w-3.5 h-3.5 text-emerald-400 shrink-0" />
+                <select
+                  value={sortBy}
+                  onChange={(e) => setSortBy(e.target.value)}
+                  className="bg-transparent text-white font-semibold text-xs focus:outline-none cursor-pointer pr-1"
+                  title="Ordina i brani della libreria"
+                >
+                  <option value="default" className="bg-slate-900 text-white">Download recenti</option>
+                  <option value="title-asc" className="bg-slate-900 text-white">Brano (A - Z)</option>
+                  <option value="title-desc" className="bg-slate-900 text-white">Brano (Z - A)</option>
+                  <option value="artist-asc" className="bg-slate-900 text-white">Artista (A - Z)</option>
+                  <option value="artist-desc" className="bg-slate-900 text-white">Artista (Z - A)</option>
+                </select>
+              </div>
+            )}
+
+            {downloads.length > 0 && (
+              <button
+                onClick={handleClearAll}
+                className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border shrink-0 ${
+                  confirmClearAll
+                    ? 'bg-rose-600 text-white border-rose-400 shadow-lg'
+                    : 'bg-slate-800/80 hover:bg-rose-950/50 text-slate-300 hover:text-rose-400 border-slate-700'
+                }`}
+                title="Svuota intera libreria offline"
+              >
+                <Trash2 className="w-3.5 h-3.5" />
+                <span>{confirmClearAll ? 'Conferma Svuota' : 'Svuota Tutto'}</span>
+              </button>
+            )}
+
             <button
-              onClick={handleClearAll}
-              className={`px-3 py-1.5 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-all border shrink-0 ${
-                confirmClearAll
-                  ? 'bg-rose-600 text-white border-rose-400 shadow-lg'
-                  : 'bg-slate-800/80 hover:bg-rose-950/50 text-slate-300 hover:text-rose-400 border-slate-700'
-              }`}
-              title="Svuota intera libreria offline"
+              onClick={loadDownloads}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-xs font-medium text-slate-300 hover:text-white flex items-center gap-1.5 transition-colors border border-slate-700 shrink-0"
+              title="Aggiorna lista file scaricati"
             >
-              <Trash2 className="w-3.5 h-3.5" />
-              <span>{confirmClearAll ? 'Conferma Svuota' : 'Svuota Tutto'}</span>
+              <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-emerald-400' : ''}`} />
+              <span>Aggiorna</span>
             </button>
-          )}
-
-          <button
-            onClick={loadDownloads}
-            className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-750 text-xs font-medium text-slate-300 hover:text-white flex items-center gap-1.5 transition-colors border border-slate-700 shrink-0"
-            title="Aggiorna lista file scaricati"
-          >
-            <RefreshCw className={`w-3.5 h-3.5 ${loading ? 'animate-spin text-emerald-400' : ''}`} />
-            <span>Aggiorna</span>
-          </button>
+          </div>
         </div>
       </div>
 
-      {/* Tracks List */}
-      {downloads.length === 0 ? (
-        <div className="p-16 text-center text-slate-500 bg-slate-900/30 rounded-2xl border border-slate-800/60">
-          <HardDrive className="w-14 h-14 stroke-1 mx-auto mb-3 text-slate-600" />
-          <h3 className="text-base font-semibold text-slate-300">Nessun brano salvato</h3>
-          <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
-            Premi il pulsante "Scarica" accanto a qualsiasi canzone nella Home o nei risultati di ricerca per salvarla per l'ascolto offline.
-          </p>
-        </div>
-      ) : (
-        <div className="space-y-1.5 pb-4">
-          {sortedDownloads.map((track, idx) => {
+      {/* Scrollable Tracks List */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 md:px-8 py-3 md:py-4">
+        {downloads.length === 0 ? (
+          <div className="p-16 text-center text-slate-500 bg-slate-900/30 rounded-2xl border border-slate-800/60 my-auto">
+            <HardDrive className="w-14 h-14 stroke-1 mx-auto mb-3 text-slate-600" />
+            <h3 className="text-base font-semibold text-slate-300">Nessun brano salvato</h3>
+            <p className="text-xs text-slate-500 mt-1 max-w-md mx-auto">
+              Premi il pulsante "Scarica" accanto a qualsiasi canzone nella Home o nei risultati di ricerca per salvarla per l'ascolto offline.
+            </p>
+          </div>
+        ) : (
+          <div className="space-y-1.5 pb-8">
+            {sortedDownloads.map((track, idx) => {
             const isThisPlaying = Boolean(
               isPlaying && currentTrack && (
                 (track.id && currentTrack.id && String(track.id) === String(currentTrack.id)) ||
@@ -289,6 +292,7 @@ export default function DownloadsView({
           })}
         </div>
       )}
+      </div>
     </div>
   );
 }

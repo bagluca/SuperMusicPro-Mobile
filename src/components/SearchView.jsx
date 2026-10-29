@@ -149,77 +149,84 @@ export default function SearchView({
   };
 
   return (
-    <div 
-      ref={scrollContainerRef} 
-      onScroll={handleScroll} 
-      className="flex-1 overflow-y-auto overflow-x-hidden px-3 md:px-6 py-3 md:py-6 space-y-4 md:space-y-6 select-none max-w-full"
-    >
-      {/* Search Input Bar + Song Recognition Button */}
-      <div className="flex items-center gap-2 max-w-xl w-full">
-        <div className="relative flex-1">
-          <input
-            type="text"
-            value={query}
-            onChange={(e) => handleSearch(e.target.value)}
-            placeholder="Cerca brani, artisti, album..."
-            className="w-full bg-slate-900/90 border border-slate-700 rounded-full pl-11 pr-10 py-2.5 md:py-3 text-xs md:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 transition-colors shadow-inner"
-          />
-          <Search className="w-4 h-4 md:w-5 md:h-5 text-slate-400 absolute left-3.5 top-3 md:top-3.5" />
-          {query && (
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden select-none max-w-full">
+      {/* Fixed Search Header */}
+      <div className="shrink-0 px-3 md:px-6 pt-3 md:pt-5 pb-3 border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md z-10 space-y-2.5">
+        {/* Search Input Bar + Song Recognition Button */}
+        <div className="flex items-center gap-2 max-w-xl w-full">
+          <div className="relative flex-1">
+            <input
+              type="text"
+              value={query}
+              onChange={(e) => handleSearch(e.target.value)}
+              placeholder="Cerca brani, artisti, album..."
+              className="w-full bg-slate-900/90 border border-slate-700 rounded-full pl-11 pr-10 py-2.5 md:py-3 text-xs md:text-sm text-white placeholder-slate-400 focus:outline-none focus:border-emerald-400 focus:ring-2 focus:ring-emerald-500/20 transition-colors shadow-inner"
+            />
+            <Search className="w-4 h-4 md:w-5 md:h-5 text-slate-400 absolute left-3.5 top-3 md:top-3.5" />
+            {query && (
+              <button
+                onClick={() => handleSearch('')}
+                className="absolute right-3.5 top-2.5 md:top-3.5 p-1 text-slate-400 hover:text-white"
+              >
+                <X className="w-4 h-4" />
+              </button>
+            )}
+          </div>
+
+          {onOpenRecognition && (
             <button
-              onClick={() => handleSearch('')}
-              className="absolute right-3.5 top-2.5 md:top-3.5 p-1 text-slate-400 hover:text-white"
+              onClick={onOpenRecognition}
+              className="h-10 md:h-11 px-3.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 flex items-center gap-1.5 text-xs font-bold shadow-[0_0_12px_rgba(16,185,129,0.2)] active:scale-95 transition-all flex-shrink-0"
+              title="Riconosci canzone dall'ambiente"
             >
-              <X className="w-4 h-4" />
+              <Mic className="w-4 h-4 text-emerald-400" />
+              <span>Riconosci</span>
             </button>
           )}
         </div>
 
-        {onOpenRecognition && (
-          <button
-            onClick={onOpenRecognition}
-            className="h-10 md:h-11 px-3.5 rounded-full bg-emerald-500/20 hover:bg-emerald-500/30 border border-emerald-500/50 text-emerald-300 flex items-center gap-1.5 text-xs font-bold shadow-[0_0_12px_rgba(16,185,129,0.2)] active:scale-95 transition-all flex-shrink-0"
-            title="Riconosci canzone dall'ambiente"
-          >
-            <Mic className="w-4 h-4 text-emerald-400" />
-            <span>Riconosci</span>
-          </button>
-        )}
-      </div>
-
-      {/* Results View */}
-      {query.trim() ? (
-        <div>
-          <div className="flex items-center justify-between mb-4">
-            <h2 className="text-base font-bold text-white flex items-center gap-2">
-              Risultati per "{query}"
-              <span className="text-xs font-normal text-slate-400">
-                {isSearching ? '(ricerca in corso...)' : `(${results.length} brani trovati)`}
+        {/* Results Header (Fixed at top) */}
+        {query.trim() && (
+          <div className="flex items-center justify-between">
+            <h2 className="text-sm md:text-base font-bold text-white flex items-center gap-2 truncate">
+              <span className="truncate">Risultati per "{query}"</span>
+              <span className="text-xs font-normal text-slate-400 shrink-0">
+                {isSearching ? '(ricerca in corso...)' : `(${results.length} brani)`}
               </span>
             </h2>
           </div>
+        )}
+      </div>
 
-          {results.length === 0 && !isSearching ? (
-            <div className="p-12 text-center text-slate-500">
-              <Music2 className="w-12 h-12 stroke-1 mx-auto mb-2 text-slate-600" />
-              <p className="text-sm font-medium text-slate-400">Nessun brano trovato con questo termine.</p>
-              <p className="text-xs text-slate-500 mt-1">Prova a cercare per nome artista o titolo canzone.</p>
-            </div>
-          ) : (
-            <>
-              <div className="space-y-1.5">
-              {results.map((track, idx) => {
-                const isThisPlaying = Boolean(
-                  isPlaying && currentTrack && (
-                    (track.id && currentTrack.id && String(track.id) === String(currentTrack.id)) ||
-                    (track.videoId && currentTrack.videoId && String(track.videoId) === String(currentTrack.videoId)) ||
-                    (track.title && currentTrack.title && track.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
-                     track.artist && currentTrack.artist && track.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
-                  )
-                );
-                const dlState = downloadingIds[track.videoId || track.id];
+      {/* Scrollable Results / Genre Area */}
+      <div 
+        ref={scrollContainerRef} 
+        onScroll={handleScroll} 
+        className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3 md:px-6 py-3 md:py-4 select-none"
+      >
+        {query.trim() ? (
+          <div>
+            {results.length === 0 && !isSearching ? (
+              <div className="p-12 text-center text-slate-500">
+                <Music2 className="w-12 h-12 stroke-1 mx-auto mb-2 text-slate-600" />
+                <p className="text-sm font-medium text-slate-400">Nessun brano trovato con questo termine.</p>
+                <p className="text-xs text-slate-500 mt-1">Prova a cercare per nome artista o titolo canzone.</p>
+              </div>
+            ) : (
+              <>
+                <div className="space-y-1.5">
+                {results.map((track, idx) => {
+                  const isThisPlaying = Boolean(
+                    isPlaying && currentTrack && (
+                      (track.id && currentTrack.id && String(track.id) === String(currentTrack.id)) ||
+                      (track.videoId && currentTrack.videoId && String(track.videoId) === String(currentTrack.videoId)) ||
+                      (track.title && currentTrack.title && track.title.trim().toLowerCase() === currentTrack.title.trim().toLowerCase() &&
+                       track.artist && currentTrack.artist && track.artist.trim().toLowerCase() === currentTrack.artist.trim().toLowerCase())
+                    )
+                  );
+                  const dlState = downloadingIds[track.videoId || track.id];
 
-                return (
+                  return (
                   <div
                     key={track.id || idx}
                     onClick={() => onPlayTrack(track, results, { type: 'search', title: query || 'Risultati di Ricerca' })}
@@ -350,6 +357,7 @@ export default function SearchView({
           </div>
         </div>
       )}
+      </div>
     </div>
   );
 }

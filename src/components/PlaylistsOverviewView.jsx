@@ -13,37 +13,40 @@ export default function PlaylistsOverviewView({
 }) {
   const [confirmDeleteId, setConfirmDeleteId] = useState(null);
   return (
-    <div className="flex-1 overflow-y-auto overflow-x-hidden px-3.5 md:px-8 py-3 md:py-6 select-none max-w-full space-y-4 md:space-y-6">
-      {/* View Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between border-b border-slate-800/80 pb-4 gap-3">
-        <div className="flex items-center space-x-3">
-          <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30 shadow-lg">
-            <Library className="w-5 h-5 md:w-6 md:h-6" />
+    <div className="flex-1 flex flex-col min-h-0 overflow-hidden select-none max-w-full">
+      {/* Fixed View Header */}
+      <div className="shrink-0 px-3.5 md:px-8 pt-3 md:pt-5 pb-3 md:pb-4 border-b border-slate-800/80 bg-slate-950/60 backdrop-blur-md z-10">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+          <div className="flex items-center space-x-3">
+            <div className="w-10 h-10 md:w-12 md:h-12 rounded-xl bg-purple-500/20 text-purple-400 flex items-center justify-center border border-purple-500/30 shadow-lg shrink-0">
+              <Library className="w-5 h-5 md:w-6 md:h-6" />
+            </div>
+            <div className="min-w-0">
+              <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
+                <span>Le Tue Playlist</span>
+                <span className="text-[11px] md:text-xs bg-purple-500/20 text-purple-300 font-mono px-2 py-0.5 rounded-full border border-purple-500/30">
+                  {playlists.length + (likedCount > 0 ? 1 : 0)} raccolte
+                </span>
+              </h1>
+              <p className="text-xs text-slate-400 mt-0.5 truncate">
+                Crea le tue raccolte personali, organizza i tuoi brani e ascolta offline
+              </p>
+            </div>
           </div>
-          <div>
-            <h1 className="text-xl md:text-2xl font-bold text-white tracking-tight flex items-center gap-2">
-              Le Tue Playlist
-              <span className="text-[11px] md:text-xs bg-purple-500/20 text-purple-300 font-mono px-2 py-0.5 rounded-full border border-purple-500/30">
-                {playlists.length + (likedCount > 0 ? 1 : 0)} raccolte
-              </span>
-            </h1>
-            <p className="text-xs text-slate-400 mt-0.5">
-              Crea le tue raccolte personali, organizza i tuoi brani e ascolta offline
-            </p>
-          </div>
-        </div>
 
-        <button
-          onClick={onCreatePlaylist}
-          className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] active:scale-95"
-        >
-          <Plus className="w-4 h-4" />
-          <span>Nuova Playlist</span>
-        </button>
+          <button
+            onClick={onCreatePlaylist}
+            className="px-4 py-2 rounded-xl bg-emerald-500 hover:bg-emerald-400 text-slate-950 font-bold text-xs flex items-center justify-center gap-2 transition-all shadow-[0_0_15px_rgba(16,185,129,0.3)] active:scale-95 shrink-0"
+          >
+            <Plus className="w-4 h-4" />
+            <span>Nuova Playlist</span>
+          </button>
+        </div>
       </div>
 
-      {/* Grid of Playlists */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 pb-6">
+      {/* Scrollable Grid of Playlists */}
+      <div className="flex-1 min-h-0 overflow-y-auto overflow-x-hidden px-3.5 md:px-8 py-3 md:py-4">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 md:gap-4 pb-8">
         {/* Liked Songs Special Card */}
         <div
           onClick={onOpenLiked}
@@ -178,6 +181,7 @@ export default function PlaylistsOverviewView({
             </p>
           </div>
         )}
+      </div>
       </div>
     </div>
   );
