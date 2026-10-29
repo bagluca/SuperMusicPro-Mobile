@@ -159,14 +159,34 @@ export default function App() {
       }
     });
 
+    const unsubNativeTrack = audioEngine.on('nativetrackchange', (trackData) => {
+      if (trackData && trackData.title) {
+        setCurrentTrack(prev => ({
+          ...prev,
+          title: trackData.title,
+          artist: trackData.artist,
+          cover: trackData.cover,
+          videoId: trackData.videoId,
+          id: trackData.videoId ? `yt_${trackData.videoId}` : (prev?.id || `track_${Date.now()}`)
+        }));
+      }
+    });
+
     return () => {
       unsubState();
       unsubNext();
       unsubPrev();
       unsubEnded();
       unsubPlayLocal();
+      unsubNativeTrack();
     };
   }, []);
+
+  // Sync active queue, favorites, and playlists to Android Auto & background native service
+  useEffect(() => {
+    const fullQueue = currentTrack ? [currentTrack, ...queue] : queue;
+    audioEngine.syncAppData(fullQueue, 0, likedSongs, playlists);
+  }, [queue, currentTrack, likedSongs, playlists]);
 
   // Global Keyboard shortcuts
   useEffect(() => {

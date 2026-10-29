@@ -73,6 +73,12 @@ class AudioEngine {
         MusicNotification.addListener('onPlaybackError', (data) => {
           console.warn('Native ExoPlayer error:', data?.error);
         });
+
+        MusicNotification.addListener('onNativeTrackChanged', (data) => {
+          if (data) {
+            this.emit('nativetrackchange', data);
+          }
+        });
       } catch (err) {
         console.warn('Error setting up MusicNotification listeners:', err);
       }
@@ -87,6 +93,19 @@ class AudioEngine {
           artist: track.artist || 'SuperMusic Artist',
           cover: track.cover || '',
           isPlaying: isPlaying
+        }).catch(() => {});
+      } catch {}
+    }
+  }
+
+  syncAppData(queue = [], currentIndex = 0, favorites = [], playlists = []) {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        MusicNotification.syncAppData({
+          queue: (queue || []).slice(0, 100),
+          currentIndex: currentIndex || 0,
+          favorites: (favorites || []).slice(0, 100),
+          playlists: (playlists || []).slice(0, 50)
         }).catch(() => {});
       } catch {}
     }

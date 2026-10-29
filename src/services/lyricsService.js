@@ -198,7 +198,7 @@ export function parseTTML(ttmlString) {
   return sorted.filter((item, idx) => !isCreditLine(item.text, idx, sorted.length));
 }
 
-const LRCLIB_USER_AGENT = 'SuperMusicPRO/2.3.0 (Android; Mobile; +https://github.com/lucab/SuperMusicPro)';
+const LRCLIB_USER_AGENT = 'SuperMusicPRO/2.3.1 (Android; Mobile; +https://github.com/lucab/SuperMusicPro)';
 
 async function httpGet(url, responseType = 'json', customHeaders = {}) {
   const headers = {

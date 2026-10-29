@@ -5,6 +5,7 @@ import android.content.Context;
 import android.content.Intent;
 import android.os.Build;
 import com.getcapacitor.Bridge;
+import com.getcapacitor.JSArray;
 import com.getcapacitor.JSObject;
 import com.getcapacitor.PermissionState;
 import com.getcapacitor.Plugin;
@@ -84,6 +85,18 @@ public class MusicNotificationPlugin extends Plugin {
             JSObject data = new JSObject();
             data.put("error", error);
             instance.notifyListeners("onPlaybackError", data);
+        }
+    }
+
+    public static void dispatchTrackChanged(String title, String artist, String cover, String videoId, int queueIndex) {
+        if (isBridgeReady()) {
+            JSObject data = new JSObject();
+            data.put("title", title);
+            data.put("artist", artist);
+            data.put("cover", cover);
+            data.put("videoId", videoId);
+            data.put("queueIndex", queueIndex);
+            instance.notifyListeners("onNativeTrackChanged", data);
         }
     }
 
@@ -277,6 +290,24 @@ public class MusicNotificationPlugin extends Plugin {
             call.resolve();
         } catch (Exception e) {
             call.reject("Error starting music service: " + e.getMessage());
+        }
+    }
+
+    @PluginMethod
+    public void syncAppData(PluginCall call) {
+        try {
+            JSArray queueArr = call.getArray("queue");
+            int currentIndex = call.getInt("currentIndex", 0);
+            JSArray favsArr = call.getArray("favorites");
+            JSArray playlistsArr = call.getArray("playlists");
+
+            MusicPlayerService svc = MusicPlayerService.getInstance();
+            if (svc != null) {
+                svc.syncFromApp(queueArr, currentIndex, favsArr, playlistsArr);
+            }
+            call.resolve();
+        } catch (Exception e) {
+            call.reject("Error syncing app data: " + e.getMessage());
         }
     }
 
