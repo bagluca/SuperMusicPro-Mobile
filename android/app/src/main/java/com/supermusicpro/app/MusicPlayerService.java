@@ -305,8 +305,8 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     private void initExoPlayer() {
         try {
             okHttpClient = new OkHttpClient.Builder()
-                    .connectTimeout(15, TimeUnit.SECONDS)
-                    .readTimeout(15, TimeUnit.SECONDS)
+                    .connectTimeout(5, TimeUnit.SECONDS)
+                    .readTimeout(8, TimeUnit.SECONDS)
                     .followRedirects(true)
                     .followSslRedirects(true)
                     .retryOnConnectionFailure(true)
@@ -449,10 +449,29 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
             );
             mediaSession.setMediaButtonReceiver(mediaButtonPendingIntent);
             mediaSession.setActive(true);
+
+            long initialActions = PlaybackStateCompat.ACTION_PLAY |
+                    PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID |
+                    PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH |
+                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
+
+            mediaSession.setPlaybackState(
+                    new PlaybackStateCompat.Builder()
+                            .setActions(initialActions)
+                            .setState(PlaybackStateCompat.STATE_STOPPED, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1.0f)
+                            .build()
+            );
+            mediaSession.setMetadata(null);
+
             mediaSession.setCallback(new MediaSessionCompat.Callback() {
                 @Override
                 public void onPlay() {
-                    if (exoPlayer != null) exoPlayer.play();
+                    if (exoPlayer != null && exoPlayer.getPlaybackState() != Player.STATE_IDLE && exoPlayer.getPlaybackState() != Player.STATE_ENDED) {
+                        exoPlayer.play();
+                    } else {
+                        playDjSmartMix();
+                    }
                 }
 
                 @Override
@@ -489,7 +508,11 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                     setMediaSessionBuffering();
 
                     if (MEDIA_ID_NOW_PLAYING.equals(mediaId)) {
-                        if (exoPlayer != null) exoPlayer.play();
+                        if (exoPlayer != null && exoPlayer.getPlaybackState() != Player.STATE_IDLE && exoPlayer.getPlaybackState() != Player.STATE_ENDED) {
+                            exoPlayer.play();
+                        } else {
+                            playDjSmartMix();
+                        }
                     } else if (MEDIA_ID_DJ.equals(mediaId)) {
                         playDjSmartMix();
                     } else if (mediaId.startsWith("queue_track:")) {
@@ -659,6 +682,10 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
 
             if (playableUrl == null || playableUrl.trim().isEmpty()) {
                 Log.e(TAG, "Could not resolve stream URL for videoId: " + resolvedVid);
+                mainHandler.post(() -> {
+                    isPlaying = false;
+                    updateMediaSessionState();
+                });
                 MusicNotificationPlugin.dispatchPlaybackError("Impossibile reperire lo stream audio");
                 return;
             }
@@ -1358,6 +1385,24 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         if (mediaSession == null) return;
 
         try {
+            boolean hasActiveTrack = isPlaying || (exoPlayer != null && exoPlayer.getPlaybackState() != Player.STATE_IDLE && exoPlayer.getPlaybackState() != Player.STATE_ENDED);
+            if (!hasActiveTrack && (currentVideoId == null || currentVideoId.isEmpty())) {
+                long initialActions = PlaybackStateCompat.ACTION_PLAY |
+                        PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID |
+                        PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH |
+                        PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                        PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
+
+                mediaSession.setPlaybackState(
+                        new PlaybackStateCompat.Builder()
+                                .setActions(initialActions)
+                                .setState(PlaybackStateCompat.STATE_STOPPED, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1.0f)
+                                .build()
+                );
+                mediaSession.setMetadata(null);
+                return;
+            }
+
             int state = isPlaying ? PlaybackStateCompat.STATE_PLAYING : PlaybackStateCompat.STATE_PAUSED;
             long actions = PlaybackStateCompat.ACTION_PLAY |
                     PlaybackStateCompat.ACTION_PAUSE |
@@ -1989,6 +2034,23 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     @Override
     public BrowserRoot onGetRoot(@NonNull String clientPackageName, int clientUid, @Nullable Bundle rootHints) {
         Log.d(TAG, "Android Auto onGetRoot for client: " + clientPackageName);
+
+        boolean hasActiveTrack = isPlaying || (exoPlayer != null && exoPlayer.getPlaybackState() != Player.STATE_IDLE && exoPlayer.getPlaybackState() != Player.STATE_ENDED);
+        if (!hasActiveTrack && (currentVideoId == null || currentVideoId.isEmpty()) && mediaSession != null) {
+            long initialActions = PlaybackStateCompat.ACTION_PLAY |
+                    PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID |
+                    PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH |
+                    PlaybackStateCompat.ACTION_SKIP_TO_NEXT |
+                    PlaybackStateCompat.ACTION_SKIP_TO_PREVIOUS;
+            mediaSession.setPlaybackState(
+                    new PlaybackStateCompat.Builder()
+                            .setActions(initialActions)
+                            .setState(PlaybackStateCompat.STATE_STOPPED, PlaybackStateCompat.PLAYBACK_POSITION_UNKNOWN, 1.0f)
+                            .build()
+            );
+            mediaSession.setMetadata(null);
+        }
+
         Bundle extras = new Bundle();
         extras.putBoolean("android.media.browse.SEARCH_SUPPORTED", true);
         extras.putBoolean("android.media.browse.CONTENT_STYLE_SUPPORTED", true);
