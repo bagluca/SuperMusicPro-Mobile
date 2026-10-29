@@ -256,7 +256,7 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         initDefaultCatalog();
         executorService.execute(() -> {
             try {
-                List<InnerTubeTrack> liveTrending = fetchInnerTubeTracks("Top Hit Italia", 15);
+                List<InnerTubeTrack> liveTrending = fetchInnerTubeTracks("Hit del momento Italia", 25);
                 if (liveTrending != null && !liveTrending.isEmpty()) {
                     synchronized (nativeTrending) {
                         nativeTrending.clear();
@@ -1146,53 +1146,8 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     }
 
     private void initDefaultCatalog() {
-        synchronized (nativeTrending) {
-            if (nativeTrending.isEmpty()) {
-                String[][] trendData = new String[][] {
-                        {"Balorda Nostalgia", "Olly, JVLI", "f4Mc-NYPHaQ", "https://i.ytimg.com/vi/f4Mc-NYPHaQ/hqdefault.jpg"},
-                        {"Die With A Smile", "Lady Gaga, Bruno Mars", "kPa7bsKwL-c", "https://i.ytimg.com/vi/kPa7bsKwL-c/hqdefault.jpg"},
-                        {"APT.", "ROSÉ & Bruno Mars", "ekr2nIex040", "https://i.ytimg.com/vi/ekr2nIex040/hqdefault.jpg"},
-                        {"I P' ME, TU P' TE", "Geolier", "qon1NJ6D3co", "https://i.ytimg.com/vi/qon1NJ6D3co/hqdefault.jpg"},
-                        {"Sinceramente", "Annalisa", "K_iaQPLdmJU", "https://i.ytimg.com/vi/K_iaQPLdmJU/hqdefault.jpg"},
-                        {"TUTA GOLD", "Mahmood", "yr_Rwgdh59w", "https://i.ytimg.com/vi/yr_Rwgdh59w/hqdefault.jpg"},
-                        {"100 Messaggi", "Lazza", "z8F0M4fI79k", "https://i.ytimg.com/vi/z8F0M4fI79k/hqdefault.jpg"},
-                        {"Storie Brevi", "Tananai & Annalisa", "r7v7t191t6c", "https://i.ytimg.com/vi/r7v7t191t6c/hqdefault.jpg"},
-                        {"Espresso", "Sabrina Carpenter", "eVli-tstM5E", "https://i.ytimg.com/vi/eVli-tstM5E/hqdefault.jpg"},
-                        {"Birds of a Feather", "Billie Eilish", "d5gf9dXbPi0", "https://i.ytimg.com/vi/d5gf9dXbPi0/hqdefault.jpg"}
-                };
-                for (String[] t : trendData) {
-                    NativeTrackItem item = new NativeTrackItem();
-                    item.title = t[0];
-                    item.artist = t[1];
-                    item.videoId = t[2];
-                    item.cover = t[3];
-                    nativeTrending.add(item);
-                }
-            }
-        }
-
-        synchronized (nativeNewReleases) {
-            if (nativeNewReleases.isEmpty()) {
-                String[][] newData = new String[][] {
-                        {"Per Due Come Noi", "Olly, Angelina Mango, JVLI", "zT2C_5gD5x0", "https://i.ytimg.com/vi/zT2C_5gD5x0/hqdefault.jpg"},
-                        {"Amore Disperato", "Achille Lauro", "W1g9r2vj0F4", "https://i.ytimg.com/vi/W1g9r2vj0F4/hqdefault.jpg"},
-                        {"Ora Che Non Ho Più Te", "Cesare Cremonini", "K2Qp8wR5z4k", "https://i.ytimg.com/vi/K2Qp8wR5z4k/hqdefault.jpg"},
-                        {"Il Linguaggio del Corpo", "Paola & Chiara feat. BigMama", "X9vT2Q5k4nM", "https://i.ytimg.com/vi/X9vT2Q5k4nM/hqdefault.jpg"},
-                        {"CLICK BOOM!", "Rose Villain", "8mCBkGR_PRc", "https://i.ytimg.com/vi/8mCBkGR_PRc/hqdefault.jpg"},
-                        {"La Noia", "Angelina Mango", "ZntlqJju8xQ", "https://i.ytimg.com/vi/ZntlqJju8xQ/hqdefault.jpg"},
-                        {"Paprika", "Ghali", "P4vT2Q5k4nM", "https://i.ytimg.com/vi/P4vT2Q5k4nM/hqdefault.jpg"},
-                        {"Ghiaccio", "Tedua", "J9vT2Q5k4nM", "https://i.ytimg.com/vi/J9vT2Q5k4nM/hqdefault.jpg"}
-                };
-                for (String[] t : newData) {
-                    NativeTrackItem item = new NativeTrackItem();
-                    item.title = t[0];
-                    item.artist = t[1];
-                    item.videoId = t[2];
-                    item.cover = t[3];
-                    nativeNewReleases.add(item);
-                }
-            }
-        }
+        // Zero static hardcoded presets: all trending and new release tracks are loaded
+        // dynamically live on startup from YouTube Music / charts without dead fallbacks.
     }
 
     public void syncFromApp(JSArray queueArr, int currentIndex, JSArray favsArr, JSArray playlistsArr, JSArray catalogArr) {
@@ -1861,30 +1816,7 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     }
 
     private List<MediaBrowserCompat.MediaItem> getDefaultFallbackItems() {
-        List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
-        String[][] presets = new String[][] {
-                {"Sinceramente", "Annalisa"},
-                {"Tuta Gold", "Mahmood"},
-                {"100 Messaggi", "Lazza"},
-                {"Storie Brevi", "Tananai & Annalisa"},
-                {"I P' ME, TU P' TE", "Geolier"},
-                {"Espresso", "Sabrina Carpenter"},
-                {"Birds of a Feather", "Billie Eilish"}
-        };
-        for (String[] p : presets) {
-            String title = p[0];
-            String artist = p[1];
-            Bundle itemExtras = new Bundle();
-            itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
-            MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
-                    .setMediaId("track:query:" + Uri.encode(title) + ":" + Uri.encode(artist) + ":")
-                    .setTitle(title)
-                    .setSubtitle(artist)
-                    .setExtras(itemExtras)
-                    .build();
-            items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
-        }
-        return items;
+        return new ArrayList<>();
     }
 
     private List<InnerTubeTrack> fetchInnerTubeTracks(String query, int limit) {
@@ -1901,16 +1833,13 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
             JSONObject payload = new JSONObject();
             payload.put("context", new JSONObject().put("client", clientObj));
             payload.put("query", query);
+            payload.put("params", "EgWKAQIIAWoKEAkQBRAKEAMQBA==");
 
             RequestBody body = RequestBody.create(payload.toString(), MediaType.parse("application/json; charset=utf-8"));
             Request request = new Request.Builder()
                     .url("https://music.youtube.com/youtubei/v1/search?prettyPrint=false")
                     .post(body)
                     .header("User-Agent", "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36")
-                    .header("X-YouTube-Client-Name", "67")
-                    .header("X-YouTube-Client-Version", "1.20240901.01.00")
-                    .header("Origin", "https://music.youtube.com")
-                    .header("Referer", "https://music.youtube.com/")
                     .build();
 
             try (Response response = okHttpClient.newCall(request).execute()) {
@@ -1938,6 +1867,15 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                     JSONObject playData = r.optJSONObject("playlistItemData");
                     if (playData != null) {
                         videoId = playData.optString("videoId", "");
+                    }
+                    if (videoId.isEmpty()) {
+                        JSONObject nav = r.optJSONObject("navigationEndpoint");
+                        if (nav != null) {
+                            JSONObject watch = nav.optJSONObject("watchEndpoint");
+                            if (watch != null) {
+                                videoId = watch.optString("videoId", "");
+                            }
+                        }
                     }
                     if (videoId.isEmpty()) {
                         JSONObject overlay = r.optJSONObject("overlay");
@@ -2325,6 +2263,36 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                 result.sendResult(items);
                 return;
             }
+            result.detach();
+            executorService.execute(() -> {
+                List<InnerTubeTrack> tracks = fetchInnerTubeTracks("Hit del momento Italia", 20);
+                List<MediaBrowserCompat.MediaItem> dyn = new ArrayList<>();
+                synchronized (nativeTrending) {
+                    nativeTrending.clear();
+                    for (InnerTubeTrack tr : tracks) {
+                        NativeTrackItem item = new NativeTrackItem();
+                        item.title = tr.title;
+                        item.artist = tr.artist;
+                        item.cover = tr.thumbnail;
+                        item.videoId = tr.videoId;
+                        item.url = "";
+                        nativeTrending.add(item);
+
+                        Bundle itemExtras = new Bundle();
+                        itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
+                        MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+                                .setMediaId("track:" + tr.videoId + ":" + Uri.encode(tr.title) + ":" + Uri.encode(tr.artist) + ":" + Uri.encode(tr.thumbnail))
+                                .setTitle(tr.title)
+                                .setSubtitle(tr.artist)
+                                .setIconUri(tr.thumbnail != null && !tr.thumbnail.isEmpty() ? Uri.parse(tr.thumbnail) : null)
+                                .setExtras(itemExtras)
+                                .build();
+                        dyn.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+                    }
+                }
+                mainHandler.post(() -> result.sendResult(dyn));
+            });
+            return;
         }
 
         // 5. ULTIME USCITE
@@ -2348,6 +2316,36 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                 result.sendResult(items);
                 return;
             }
+            result.detach();
+            executorService.execute(() -> {
+                List<InnerTubeTrack> tracks = fetchInnerTubeTracks("Nuove Uscite Italia", 20);
+                List<MediaBrowserCompat.MediaItem> dyn = new ArrayList<>();
+                synchronized (nativeNewReleases) {
+                    nativeNewReleases.clear();
+                    for (InnerTubeTrack tr : tracks) {
+                        NativeTrackItem item = new NativeTrackItem();
+                        item.title = tr.title;
+                        item.artist = tr.artist;
+                        item.cover = tr.thumbnail;
+                        item.videoId = tr.videoId;
+                        item.url = "";
+                        nativeNewReleases.add(item);
+
+                        Bundle itemExtras = new Bundle();
+                        itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
+                        MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+                                .setMediaId("track:" + tr.videoId + ":" + Uri.encode(tr.title) + ":" + Uri.encode(tr.artist) + ":" + Uri.encode(tr.thumbnail))
+                                .setTitle(tr.title)
+                                .setSubtitle(tr.artist)
+                                .setIconUri(tr.thumbnail != null && !tr.thumbnail.isEmpty() ? Uri.parse(tr.thumbnail) : null)
+                                .setExtras(itemExtras)
+                                .build();
+                        dyn.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+                    }
+                }
+                mainHandler.post(() -> result.sendResult(dyn));
+            });
+            return;
         }
 
         // 6. I PIÙ ASCOLTATI
@@ -2566,17 +2564,17 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         // ParentId is a category to query dynamically!
         result.detach();
         executorService.execute(() -> {
-            String query = "Top Hit Italia";
+            String query = "Hit del momento Italia";
             if (MEDIA_ID_TRENDING.equals(parentId)) {
-                query = "Top Hit Italia 2024";
+                query = "Hit del momento Italia";
             } else if (parentId.startsWith("genre:")) {
                 String sub = parentId.substring("genre:".length());
-                if ("pop".equals(sub)) query = "Pop Hits 2024";
-                else if ("rap".equals(sub)) query = "Rap Italiano 2024";
-                else if ("rock".equals(sub)) query = "Rock Classics";
-                else if ("dance".equals(sub)) query = "Dance EDM Hits";
-                else if ("latin".equals(sub)) query = "Reggaeton 2024";
-                else if ("chill".equals(sub)) query = "Acoustic Relax";
+                if ("pop".equals(sub)) query = "Pop Hits Nuove Uscite";
+                else if ("rap".equals(sub)) query = "Rap Trap Italiano Hit";
+                else if ("rock".equals(sub)) query = "Rock Classics Hits";
+                else if ("dance".equals(sub)) query = "Dance EDM House Hits";
+                else if ("latin".equals(sub)) query = "Reggaeton Latino Hits";
+                else if ("chill".equals(sub)) query = "Acoustic Relax Lo-Fi";
             } else if (parentId.startsWith("search:")) {
                 query = parentId.substring("search:".length());
             }

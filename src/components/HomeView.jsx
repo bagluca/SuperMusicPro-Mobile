@@ -236,9 +236,22 @@ export default function HomeView({
               Nuove uscite discografiche aggiornate per YouTube Music, Spotify & FIMI e Apple Music
             </p>
           </div>
-          <span className="text-xs text-slate-400 font-mono hidden sm:inline">{tracks.length} brani</span>
+          <span className="text-xs text-slate-400 font-mono hidden sm:inline">{tracks.length > 0 ? `${tracks.length} brani` : 'Caricamento...'}</span>
         </div>
 
+        {tracks.length === 0 ? (
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 md:gap-3">
+            {[...Array(9)].map((_, i) => (
+              <div key={i} className="p-2.5 rounded-xl bg-slate-900/40 border border-slate-800/60 flex items-center gap-2.5 animate-pulse">
+                <div className="w-12 h-12 rounded-lg bg-slate-800/70 shrink-0" />
+                <div className="flex-1 space-y-2">
+                  <div className="h-3.5 bg-slate-800/80 rounded w-3/4" />
+                  <div className="h-2.5 bg-slate-800/50 rounded w-1/2" />
+                </div>
+              </div>
+            ))}
+          </div>
+        ) : (
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2.5 md:gap-3">
           {tracks.map((track) => {
             const isThisPlaying = Boolean(
@@ -354,6 +367,7 @@ export default function HomeView({
             );
           })}
         </div>
+        )}
       </div>
     </div>
   );

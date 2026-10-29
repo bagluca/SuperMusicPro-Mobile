@@ -34,225 +34,28 @@ export const MUSIC_SOURCES = [
   { id: 'apple', name: 'Apple Music Top' },
 ];
 
-// Rich verified catalog of Latest Releases ("Ultime Uscite") for instant zero-latency start & offline fallback
-export const FULL_CATALOG = [
-  // --- FONT: SPOTIFY & FIMI ITALIA (ULTIME USCITE) ---
-  {
-    id: 'yt_9bZkp7q19f0',
-    videoId: 'f4Mc-NYPHaQ',
-    title: 'Balorda Nostalgia',
-    artist: 'Olly, JVLI',
-    album: 'Tutta Vita',
-    cover: 'https://i.ytimg.com/vi/f4Mc-NYPHaQ/hqdefault.jpg',
-    duration: 198,
-    source: 'Spotify & FIMI',
-    genre: 'Pop'
-  },
-  {
-    id: 'yt_kPa7bsKwL-c',
-    videoId: 'kPa7bsKwL-c',
-    title: 'Die With A Smile',
-    artist: 'Lady Gaga, Bruno Mars',
-    album: 'Mayhem',
-    cover: 'https://i.ytimg.com/vi/kPa7bsKwL-c/hqdefault.jpg',
-    duration: 251,
-    source: 'Spotify & FIMI',
-    genre: 'Pop'
-  },
-  {
-    id: 'yt_ekr2nIex040',
-    videoId: 'ekr2nIex040',
-    title: 'APT.',
-    artist: 'ROSÉ & Bruno Mars',
-    album: 'rosie',
-    cover: 'https://i.ytimg.com/vi/ekr2nIex040/hqdefault.jpg',
-    duration: 170,
-    source: 'Spotify & FIMI',
-    genre: 'Pop'
-  },
-  {
-    id: 'yt_qon1NJ6D3co',
-    videoId: 'qon1NJ6D3co',
-    title: "I P' ME, TU P' TE",
-    artist: 'Geolier',
-    album: 'Dio lo sa - Atto II',
-    cover: 'https://i.ytimg.com/vi/qon1NJ6D3co/hqdefault.jpg',
-    duration: 187,
-    source: 'Spotify & FIMI',
-    genre: 'Urban'
-  },
-  {
-    id: 'yt_K_iaQPLdmJU',
-    videoId: 'K_iaQPLdmJU',
-    title: 'Sinceramente',
-    artist: 'Annalisa',
-    album: 'E poi siamo finiti nel vortice',
-    cover: 'https://i.ytimg.com/vi/K_iaQPLdmJU/hqdefault.jpg',
-    duration: 215,
-    source: 'Spotify & FIMI',
-    genre: 'Pop'
-  },
-  {
-    id: 'yt_yr_Rwgdh59w',
-    videoId: 'yr_Rwgdh59w',
-    title: 'TUTA GOLD',
-    artist: 'Mahmood',
-    album: 'NEI LETTI DEGLI ALTRI',
-    cover: 'https://i.ytimg.com/vi/yr_Rwgdh59w/hqdefault.jpg',
-    duration: 178,
-    source: 'Spotify & FIMI',
-    genre: 'Urban'
-  },
-  {
-    id: 'yt_8mCBkGR_PRc',
-    videoId: '8mCBkGR_PRc',
-    title: 'CLICK BOOM!',
-    artist: 'Rose Villain',
-    album: 'RADIO VEGA',
-    cover: 'https://i.ytimg.com/vi/8mCBkGR_PRc/hqdefault.jpg',
-    duration: 225,
-    source: 'Spotify & FIMI',
-    genre: 'Pop'
-  },
-  {
-    id: 'yt_ZntlqJju8xQ',
-    videoId: 'ZntlqJju8xQ',
-    title: 'La Noia',
-    artist: 'Angelina Mango',
-    album: 'poké melodrama',
-    cover: 'https://i.ytimg.com/vi/ZntlqJju8xQ/hqdefault.jpg',
-    duration: 189,
-    source: 'Spotify & FIMI',
-    genre: 'Pop'
-  },
+// Dynamic live catalog cache: zero hardcoded dead tracks, always fresh hits
+export function getCachedHomeTracks() {
+  try {
+    const raw = localStorage.getItem('supermusic_live_trending_cache');
+    if (raw) {
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) return parsed;
+    }
+  } catch (e) {}
+  return [];
+}
 
-  // --- FONT: YOUTUBE MUSIC (ULTIME USCITE) ---
-  {
-    id: 'yt_V9PVRfjEBTI',
-    videoId: 'V9PVRfjEBTI',
-    title: 'BIRDS OF A FEATHER',
-    artist: 'Billie Eilish',
-    album: 'HIT ME HARD AND SOFT',
-    cover: 'https://i.ytimg.com/vi/V9PVRfjEBTI/hqdefault.jpg',
-    duration: 210,
-    source: 'YouTube Music',
-    genre: 'Alternative'
-  },
-  {
-    id: 'yt_eVli-tstM5E',
-    videoId: 'eVli-tstM5E',
-    title: 'Espresso',
-    artist: 'Sabrina Carpenter',
-    album: 'Short n Sweet',
-    cover: 'https://i.ytimg.com/vi/eVli-tstM5E/hqdefault.jpg',
-    duration: 175,
-    source: 'YouTube Music',
-    genre: 'Pop'
-  },
-  {
-    id: 'yt_3c6cG_s09pM',
-    videoId: 'KEG7b851Ric',
-    title: 'Taste',
-    artist: 'Sabrina Carpenter',
-    album: 'Short n Sweet',
-    cover: 'https://i.ytimg.com/vi/KEG7b851Ric/hqdefault.jpg',
-    duration: 157,
-    source: 'YouTube Music',
-    genre: 'Pop'
-  },
-  {
-    id: 'yt_sFMRqxCexDk',
-    videoId: 'sFMRqxCexDk',
-    title: 'luther',
-    artist: 'Kendrick Lamar & SZA',
-    album: 'GNX',
-    cover: 'https://i.ytimg.com/vi/sFMRqxCexDk/hqdefault.jpg',
-    duration: 177,
-    source: 'YouTube Music',
-    genre: 'Hip Hop'
-  },
-  {
-    id: 'yt_a4O-abCXsfA',
-    videoId: 'a4O-abCXsfA',
-    title: 'Timeless',
-    artist: 'The Weeknd, Playboi Carti',
-    album: 'Hurry Up Tomorrow',
-    cover: 'https://i.ytimg.com/vi/a4O-abCXsfA/hqdefault.jpg',
-    duration: 256,
-    source: 'YouTube Music',
-    genre: 'R&B'
-  },
-  {
-    id: 'yt_suAR1PYFNYA',
-    videoId: 'suAR1PYFNYA',
-    title: 'Houdini',
-    artist: 'Dua Lipa',
-    album: 'Radical Optimism',
-    cover: 'https://i.ytimg.com/vi/suAR1PYFNYA/hqdefault.jpg',
-    duration: 185,
-    source: 'YouTube Music',
-    genre: 'Dance'
-  },
+export function saveCachedHomeTracks(tracks) {
+  try {
+    if (Array.isArray(tracks) && tracks.length > 0) {
+      localStorage.setItem('supermusic_live_trending_cache', JSON.stringify(tracks.slice(0, 60)));
+    }
+  } catch (e) {}
+}
 
-  // --- FONT: APPLE MUSIC TOP (ULTIME USCITE) ---
-  {
-    id: 'yt_Oa_RSwwpPaA',
-    videoId: 'Oa_RSwwpPaA',
-    title: 'Beautiful Things',
-    artist: 'Benson Boone',
-    album: 'Fireworks & Rollerblades',
-    cover: 'https://i.ytimg.com/vi/Oa_RSwwpPaA/hqdefault.jpg',
-    duration: 180,
-    source: 'Apple Music Top',
-    genre: 'Pop'
-  },
-  {
-    id: 'yt_GZ3zL7kT6_c',
-    videoId: 'GZ3zL7kT6_c',
-    title: 'Lose Control',
-    artist: 'Teddy Swims',
-    album: "I've Tried Everything But Therapy",
-    cover: 'https://i.ytimg.com/vi/GZ3zL7kT6_c/hqdefault.jpg',
-    duration: 210,
-    source: 'Apple Music Top',
-    genre: 'R&B'
-  },
-  {
-    id: 'yt_aezstCBHOPQ',
-    videoId: 'aezstCBHOPQ',
-    title: 'Too Sweet',
-    artist: 'Hozier',
-    album: 'Unheard',
-    cover: 'https://i.ytimg.com/vi/aezstCBHOPQ/hqdefault.jpg',
-    duration: 251,
-    source: 'Apple Music Top',
-    genre: 'Rock'
-  },
-  {
-    id: 'yt_cF1Na4AIecM',
-    videoId: 'cF1Na4AIecM',
-    title: 'Please Please Please',
-    artist: 'Sabrina Carpenter',
-    album: 'Short n Sweet',
-    cover: 'https://i.ytimg.com/vi/cF1Na4AIecM/hqdefault.jpg',
-    duration: 186,
-    source: 'Apple Music Top',
-    genre: 'Pop'
-  },
-  {
-    id: 'yt_H58vbez_m4E',
-    videoId: 'H58vbez_m4E',
-    title: 'Not Like Us',
-    artist: 'Kendrick Lamar',
-    album: 'Not Like Us',
-    cover: 'https://i.ytimg.com/vi/H58vbez_m4E/hqdefault.jpg',
-    duration: 274,
-    source: 'Apple Music Top',
-    genre: 'Hip Hop'
-  }
-];
-
-export const FALLBACK_TRACKS = FULL_CATALOG;
+export const FULL_CATALOG = getCachedHomeTracks();
+export const FALLBACK_TRACKS = [];
 
 // Caches
 const videoIdCache = {};
@@ -472,6 +275,8 @@ function parseRenderer(renderer) {
 
 export const musicService = {
   getWorkingBackend,
+  getCachedHomeTracks,
+  saveCachedHomeTracks,
   _homeTracksCache: new Map(),
 
   /**
@@ -489,11 +294,7 @@ export const musicService = {
       };
       const headers = {
         'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-        'X-YouTube-Client-Name': '67',
-        'X-YouTube-Client-Version': '1.20240901.01.00',
-        'Origin': 'https://music.youtube.com',
-        'Referer': 'https://music.youtube.com/'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
       };
       const payload = {
         context: clientContext,
@@ -547,6 +348,7 @@ export const musicService = {
           const tracks = await res.json();
           if (Array.isArray(tracks) && tracks.length > 0) {
             this._homeTracksCache.set(cacheKey, { tracks, timestamp: Date.now() });
+            saveCachedHomeTracks(tracks);
             return tracks;
           }
         }
@@ -555,32 +357,32 @@ export const musicService = {
       }
     }
 
-    // 2. Live Autonomous Fetch of Latest Releases ("Ultime Uscite") per Platform
+    // 2. Live Autonomous Fetch of Real Trending / Latest Releases per Platform
     try {
       const yearTag = new Date().getFullYear();
       let liveTracks = [];
 
       if (source === 'spotify') {
         liveTracks = await this._fetchPlatformLatestReleases(
-          'Olly Giorgia Achille Lauro Geolier Lazza Annalisa Rose Villain Tony Effe',
+          `Top 50 Italia ${yearTag}`,
           'Spotify & FIMI'
         );
       } else if (source === 'apple') {
         liveTracks = await this._fetchPlatformLatestReleases(
-          'Lady Gaga Bruno Mars Sabrina Carpenter Billie Eilish Kendrick Lamar The Weeknd',
+          `Top Hits Global ${yearTag}`,
           'Apple Music Top'
         );
       } else if (source === 'youtube') {
         liveTracks = await this._fetchPlatformLatestReleases(
-          'Nuove Uscite Italia Olly Geolier Annalisa Lazza Rose Villain Mahmood',
+          `Nuove Uscite Italia ${yearTag}`,
           'YouTube Music'
         );
       } else {
-        // 'all' -> Fetch latest releases across all 3 platforms in parallel and interleave them
+        // 'all' -> Fetch real live hits and trending songs across platforms in parallel
         const [spList, ytList, apList] = await Promise.all([
-          this._fetchPlatformLatestReleases('Olly Giorgia Achille Lauro Geolier Lazza Annalisa Rose Villain Fedez', 'Spotify & FIMI'),
-          this._fetchPlatformLatestReleases('Nuove Uscite ItaliaTony Effe Mahmood Blanco Angelina Mango', 'YouTube Music'),
-          this._fetchPlatformLatestReleases('Lady Gaga Bruno Mars Sabrina Carpenter Billie Eilish Kendrick Lamar Benson Boone', 'Apple Music Top')
+          this._fetchPlatformLatestReleases('Hit del momento Italia', 'Spotify & FIMI'),
+          this._fetchPlatformLatestReleases(`Nuove Uscite Italia ${yearTag}`, 'YouTube Music'),
+          this._fetchPlatformLatestReleases(`Top Hits Global ${yearTag}`, 'Apple Music Top')
         ]);
 
         const seen = new Set();
@@ -597,22 +399,27 @@ export const musicService = {
 
       if (liveTracks.length > 0) {
         this._homeTracksCache.set(cacheKey, { tracks: liveTracks, timestamp: Date.now() });
+        saveCachedHomeTracks(liveTracks);
         return liveTracks;
       }
     } catch (err) {
       console.warn('Autonomous latest releases fallback notice:', err);
     }
 
-    // 3. Offline / Instant fallback catalog by source
+    // 3. Fallback to previously cached dynamic live tracks (never dead hardcoded static songs)
+    const cachedLive = getCachedHomeTracks();
     if (source === 'youtube') {
-      return FULL_CATALOG.filter(t => t.source === 'YouTube Music');
+      const filtered = cachedLive.filter(t => t.source === 'YouTube Music');
+      return filtered.length > 0 ? filtered : cachedLive;
     } else if (source === 'spotify') {
-      return FULL_CATALOG.filter(t => t.source.includes('Spotify'));
+      const filtered = cachedLive.filter(t => t.source && t.source.includes('Spotify'));
+      return filtered.length > 0 ? filtered : cachedLive;
     } else if (source === 'apple') {
-      return FULL_CATALOG.filter(t => t.source.includes('Apple'));
+      const filtered = cachedLive.filter(t => t.source && t.source.includes('Apple'));
+      return filtered.length > 0 ? filtered : cachedLive;
     }
 
-    return FULL_CATALOG;
+    return cachedLive;
   },
 
   /**
@@ -658,11 +465,7 @@ export const musicService = {
 
       const headers = {
         'Content-Type': 'application/json',
-        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36',
-        'X-YouTube-Client-Name': '67',
-        'X-YouTube-Client-Version': '1.20240901.01.00',
-        'Origin': 'https://music.youtube.com',
-        'Referer': 'https://music.youtube.com/'
+        'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/128.0.0.0 Safari/537.36'
       };
 
       let state = this._searchState.get(stateKey);
@@ -827,11 +630,15 @@ export const musicService = {
       }
     }
 
-    // Fallback to first verified song in master catalog
-    const fb = FULL_CATALOG[0].videoId;
-    videoIdCache[cacheKey] = fb;
-    track.videoId = fb;
-    return fb;
+    // Fallback if not identified
+    const cachedTracks = getCachedHomeTracks();
+    const fb = cachedTracks.length > 0 && cachedTracks[0].videoId ? cachedTracks[0].videoId : null;
+    if (fb) {
+      videoIdCache[cacheKey] = fb;
+      track.videoId = fb;
+      return fb;
+    }
+    return null;
   },
 
   /**

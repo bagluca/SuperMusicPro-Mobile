@@ -18,7 +18,7 @@ import GlitchEasterEgg from './components/GlitchEasterEgg';
 import MobileNavBar from './components/MobileNavBar';
 import SongRecognitionModal from './components/SongRecognitionModal';
 
-import { musicService, FULL_CATALOG } from './services/musicService';
+import { musicService } from './services/musicService';
 import { storageService } from './services/storageService';
 import { audioEngine } from './services/audioEngine';
 
@@ -46,7 +46,7 @@ export default function App() {
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSource, setSelectedSource] = useState('all');
 
-  const [tracks, setTracks] = useState(FULL_CATALOG);
+  const [tracks, setTracks] = useState(() => musicService.getCachedHomeTracks());
   const [currentTrack, setCurrentTrack] = useState(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [queue, setQueue] = useState([]);
@@ -185,8 +185,8 @@ export default function App() {
   // Sync active queue, favorites, playlists, and catalog to Android Auto & background native service
   useEffect(() => {
     const fullQueue = currentTrack ? [currentTrack, ...queue] : queue;
-    audioEngine.syncAppData(fullQueue, 0, likedSongs, playlists, FULL_CATALOG);
-  }, [queue, currentTrack, likedSongs, playlists]);
+    audioEngine.syncAppData(fullQueue, 0, likedSongs, playlists, tracks);
+  }, [queue, currentTrack, likedSongs, playlists, tracks]);
 
   // Global Keyboard shortcuts
   useEffect(() => {
