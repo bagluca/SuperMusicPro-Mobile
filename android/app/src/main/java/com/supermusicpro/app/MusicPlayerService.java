@@ -130,6 +130,8 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     private int nativeQueueIndex = 0;
     private final List<NativeTrackItem> nativeFavorites = new ArrayList<>();
     private final List<NativePlaylistItem> nativePlaylists = new ArrayList<>();
+    private final List<NativeTrackItem> nativeTrending = new ArrayList<>();
+    private final List<NativeTrackItem> nativeNewReleases = new ArrayList<>();
 
     private MediaSessionCompat mediaSession;
     private PowerManager.WakeLock wakeLock;
@@ -240,6 +242,45 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                 wifiLock.setReferenceCounted(false);
             }
         } catch (Exception ignored) {}
+
+        initDefaultCatalog();
+        executorService.execute(() -> {
+            try {
+                List<InnerTubeTrack> liveTrending = fetchInnerTubeTracks("Top Hit Italia", 15);
+                if (liveTrending != null && !liveTrending.isEmpty()) {
+                    synchronized (nativeTrending) {
+                        nativeTrending.clear();
+                        for (InnerTubeTrack tr : liveTrending) {
+                            NativeTrackItem item = new NativeTrackItem();
+                            item.title = tr.title;
+                            item.artist = tr.artist;
+                            item.cover = tr.thumbnail;
+                            item.videoId = tr.videoId;
+                            item.url = "";
+                            nativeTrending.add(item);
+                        }
+                    }
+                    mainHandler.post(() -> notifyChildrenChanged(MEDIA_ROOT_ID));
+                }
+
+                List<InnerTubeTrack> liveNew = fetchInnerTubeTracks("Nuove Uscite Italia", 15);
+                if (liveNew != null && !liveNew.isEmpty()) {
+                    synchronized (nativeNewReleases) {
+                        nativeNewReleases.clear();
+                        for (InnerTubeTrack tr : liveNew) {
+                            NativeTrackItem item = new NativeTrackItem();
+                            item.title = tr.title;
+                            item.artist = tr.artist;
+                            item.cover = tr.thumbnail;
+                            item.videoId = tr.videoId;
+                            item.url = "";
+                            nativeNewReleases.add(item);
+                        }
+                    }
+                    mainHandler.post(() -> notifyChildrenChanged(MEDIA_ROOT_ID));
+                }
+            } catch (Exception ignored) {}
+        });
 
         progressHandler.post(progressRunnable);
     }
@@ -1058,7 +1099,57 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         } catch (Exception ignored) {}
     }
 
-    public void syncFromApp(JSArray queueArr, int currentIndex, JSArray favsArr, JSArray playlistsArr) {
+    private void initDefaultCatalog() {
+        synchronized (nativeTrending) {
+            if (nativeTrending.isEmpty()) {
+                String[][] trendData = new String[][] {
+                        {"Balorda Nostalgia", "Olly, JVLI", "f4Mc-NYPHaQ", "https://i.ytimg.com/vi/f4Mc-NYPHaQ/hqdefault.jpg"},
+                        {"Die With A Smile", "Lady Gaga, Bruno Mars", "kPa7bsKwL-c", "https://i.ytimg.com/vi/kPa7bsKwL-c/hqdefault.jpg"},
+                        {"APT.", "ROSÉ & Bruno Mars", "ekr2nIex040", "https://i.ytimg.com/vi/ekr2nIex040/hqdefault.jpg"},
+                        {"I P' ME, TU P' TE", "Geolier", "qon1NJ6D3co", "https://i.ytimg.com/vi/qon1NJ6D3co/hqdefault.jpg"},
+                        {"Sinceramente", "Annalisa", "K_iaQPLdmJU", "https://i.ytimg.com/vi/K_iaQPLdmJU/hqdefault.jpg"},
+                        {"TUTA GOLD", "Mahmood", "yr_Rwgdh59w", "https://i.ytimg.com/vi/yr_Rwgdh59w/hqdefault.jpg"},
+                        {"100 Messaggi", "Lazza", "z8F0M4fI79k", "https://i.ytimg.com/vi/z8F0M4fI79k/hqdefault.jpg"},
+                        {"Storie Brevi", "Tananai & Annalisa", "r7v7t191t6c", "https://i.ytimg.com/vi/r7v7t191t6c/hqdefault.jpg"},
+                        {"Espresso", "Sabrina Carpenter", "eVli-tstM5E", "https://i.ytimg.com/vi/eVli-tstM5E/hqdefault.jpg"},
+                        {"Birds of a Feather", "Billie Eilish", "d5gf9dXbPi0", "https://i.ytimg.com/vi/d5gf9dXbPi0/hqdefault.jpg"}
+                };
+                for (String[] t : trendData) {
+                    NativeTrackItem item = new NativeTrackItem();
+                    item.title = t[0];
+                    item.artist = t[1];
+                    item.videoId = t[2];
+                    item.cover = t[3];
+                    nativeTrending.add(item);
+                }
+            }
+        }
+
+        synchronized (nativeNewReleases) {
+            if (nativeNewReleases.isEmpty()) {
+                String[][] newData = new String[][] {
+                        {"Per Due Come Noi", "Olly, Angelina Mango, JVLI", "zT2C_5gD5x0", "https://i.ytimg.com/vi/zT2C_5gD5x0/hqdefault.jpg"},
+                        {"Amore Disperato", "Achille Lauro", "W1g9r2vj0F4", "https://i.ytimg.com/vi/W1g9r2vj0F4/hqdefault.jpg"},
+                        {"Ora Che Non Ho Più Te", "Cesare Cremonini", "K2Qp8wR5z4k", "https://i.ytimg.com/vi/K2Qp8wR5z4k/hqdefault.jpg"},
+                        {"Il Linguaggio del Corpo", "Paola & Chiara feat. BigMama", "X9vT2Q5k4nM", "https://i.ytimg.com/vi/X9vT2Q5k4nM/hqdefault.jpg"},
+                        {"CLICK BOOM!", "Rose Villain", "8mCBkGR_PRc", "https://i.ytimg.com/vi/8mCBkGR_PRc/hqdefault.jpg"},
+                        {"La Noia", "Angelina Mango", "ZntlqJju8xQ", "https://i.ytimg.com/vi/ZntlqJju8xQ/hqdefault.jpg"},
+                        {"Paprika", "Ghali", "P4vT2Q5k4nM", "https://i.ytimg.com/vi/P4vT2Q5k4nM/hqdefault.jpg"},
+                        {"Ghiaccio", "Tedua", "J9vT2Q5k4nM", "https://i.ytimg.com/vi/J9vT2Q5k4nM/hqdefault.jpg"}
+                };
+                for (String[] t : newData) {
+                    NativeTrackItem item = new NativeTrackItem();
+                    item.title = t[0];
+                    item.artist = t[1];
+                    item.videoId = t[2];
+                    item.cover = t[3];
+                    nativeNewReleases.add(item);
+                }
+            }
+        }
+    }
+
+    public void syncFromApp(JSArray queueArr, int currentIndex, JSArray favsArr, JSArray playlistsArr, JSArray catalogArr) {
         synchronized (nativeQueue) {
             if (queueArr != null) {
                 nativeQueue.clear();
@@ -1129,6 +1220,34 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                         }
                         nativePlaylists.add(pl);
                     } catch (Exception ignored) {}
+                }
+            }
+
+            if (catalogArr != null && catalogArr.length() > 0) {
+                synchronized (nativeTrending) {
+                    synchronized (nativeNewReleases) {
+                        nativeTrending.clear();
+                        nativeNewReleases.clear();
+                        for (int i = 0; i < catalogArr.length(); i++) {
+                            try {
+                                org.json.JSONObject obj = catalogArr.getJSONObject(i);
+                                NativeTrackItem item = new NativeTrackItem();
+                                item.title = obj.optString("title", "SuperMusic PRO");
+                                item.artist = obj.optString("artist", "Artista");
+                                item.cover = obj.optString("cover", "");
+                                item.videoId = obj.optString("videoId", "");
+                                if (item.videoId.isEmpty() && obj.has("id")) {
+                                    String sid = obj.optString("id", "");
+                                    if (sid.startsWith("yt_")) item.videoId = sid.substring(3);
+                                }
+                                if (i < 10) {
+                                    nativeTrending.add(item);
+                                } else if (i < 20) {
+                                    nativeNewReleases.add(item);
+                                }
+                            } catch (Exception ignored) {}
+                        }
+                    }
                 }
             }
         }
@@ -1816,22 +1935,44 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
         if (MEDIA_ROOT_ID.equals(parentId)) {
             List<MediaBrowserCompat.MediaItem> items = new ArrayList<>();
 
-            // 1. In Riproduzione (Playable row)
-            Bundle nowExtras = new Bundle();
-            nowExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
-            MediaDescriptionCompat.Builder descNowBuilder = new MediaDescriptionCompat.Builder()
-                    .setMediaId(MEDIA_ID_NOW_PLAYING)
-                    .setTitle(currentTitle != null && !currentTitle.isEmpty() ? currentTitle : "SuperMusic PRO")
-                    .setSubtitle(currentArtist != null && !currentArtist.isEmpty() ? currentArtist : "In riproduzione")
-                    .setExtras(nowExtras);
-            if (cachedCoverBitmap != null) {
-                descNowBuilder.setIconBitmap(cachedCoverBitmap);
+            // 1. SEZIONE PRINCIPALE: 🔥 MUSICA DI TENDENZA (Brani direttamente riproducibili a righe)
+            synchronized (nativeTrending) {
+                for (NativeTrackItem t : nativeTrending) {
+                    Bundle itemExtras = new Bundle();
+                    itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
+                    itemExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "🔥 Musica di Tendenza");
+                    MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+                            .setMediaId("track:" + (t.videoId != null ? t.videoId : "") + ":" + Uri.encode(t.title) + ":" + Uri.encode(t.artist) + ":" + Uri.encode(t.cover != null ? t.cover : ""))
+                            .setTitle(t.title)
+                            .setSubtitle(t.artist)
+                            .setIconUri(t.cover != null && !t.cover.isEmpty() ? Uri.parse(t.cover) : null)
+                            .setExtras(itemExtras)
+                            .build();
+                    items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+                }
             }
-            items.add(new MediaBrowserCompat.MediaItem(descNowBuilder.build(), MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
 
-            // 2. Coda di Riproduzione (Browsable List)
+            // 2. SEZIONE: ✨ ULTIME USCITE (Brani nuovi a righe)
+            synchronized (nativeNewReleases) {
+                for (NativeTrackItem t : nativeNewReleases) {
+                    Bundle itemExtras = new Bundle();
+                    itemExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
+                    itemExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "✨ Ultime Uscite");
+                    MediaDescriptionCompat desc = new MediaDescriptionCompat.Builder()
+                            .setMediaId("track:" + (t.videoId != null ? t.videoId : "") + ":" + Uri.encode(t.title) + ":" + Uri.encode(t.artist) + ":" + Uri.encode(t.cover != null ? t.cover : ""))
+                            .setTitle(t.title)
+                            .setSubtitle(t.artist)
+                            .setIconUri(t.cover != null && !t.cover.isEmpty() ? Uri.parse(t.cover) : null)
+                            .setExtras(itemExtras)
+                            .build();
+                    items.add(new MediaBrowserCompat.MediaItem(desc, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
+                }
+            }
+
+            // 3. SEZIONE: 🎧 LA MIA MUSICA (Coda, Preferiti, Playlist, Cerca)
             Bundle queueExtras = new Bundle();
             queueExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            queueExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "🎧 La Mia Musica");
             int qCount = 0;
             synchronized (nativeQueue) { qCount = nativeQueue.size(); }
             MediaDescriptionCompat descQueue = new MediaDescriptionCompat.Builder()
@@ -1842,11 +1983,11 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                     .build();
             items.add(new MediaBrowserCompat.MediaItem(descQueue, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
 
-            // 3. Brani Preferiti (Browsable List)
             Bundle favExtras = new Bundle();
             favExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            favExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "🎧 La Mia Musica");
             int fCount = 0;
-            synchronized (nativeQueue) { fCount = nativeFavorites.size(); }
+            synchronized (nativeFavorites) { fCount = nativeFavorites.size(); }
             MediaDescriptionCompat descFav = new MediaDescriptionCompat.Builder()
                     .setMediaId(MEDIA_ID_FAVORITES)
                     .setTitle("❤️ Brani Preferiti")
@@ -1855,11 +1996,11 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                     .build();
             items.add(new MediaBrowserCompat.MediaItem(descFav, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
 
-            // 4. Playlist Personali (Browsable List)
             Bundle plExtras = new Bundle();
             plExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            plExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "🎧 La Mia Musica");
             int pCount = 0;
-            synchronized (nativeQueue) { pCount = nativePlaylists.size(); }
+            synchronized (nativePlaylists) { pCount = nativePlaylists.size(); }
             MediaDescriptionCompat descPl = new MediaDescriptionCompat.Builder()
                     .setMediaId(MEDIA_ID_PLAYLISTS)
                     .setTitle("🎵 Playlist Personali")
@@ -1868,31 +2009,9 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                     .build();
             items.add(new MediaBrowserCompat.MediaItem(descPl, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
 
-            // 5. Trending / Top Hits (Browsable List)
-            Bundle trendingExtras = new Bundle();
-            trendingExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
-            MediaDescriptionCompat descTrending = new MediaDescriptionCompat.Builder()
-                    .setMediaId(MEDIA_ID_TRENDING)
-                    .setTitle("🔥 Top Hit & Tendenze")
-                    .setSubtitle("I brani più ascoltati del momento")
-                    .setExtras(trendingExtras)
-                    .build();
-            items.add(new MediaBrowserCompat.MediaItem(descTrending, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
-
-            // 6. Generi Musicali (Browsable List)
-            Bundle genreExtras = new Bundle();
-            genreExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
-            MediaDescriptionCompat descGenres = new MediaDescriptionCompat.Builder()
-                    .setMediaId(MEDIA_ID_GENRES)
-                    .setTitle("🎸 Generi Musicali")
-                    .setSubtitle("Pop, Rap, Rock, Dance, Reggaeton...")
-                    .setExtras(genreExtras)
-                    .build();
-            items.add(new MediaBrowserCompat.MediaItem(descGenres, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
-
-            // 7. Cerca & Scopri (Browsable List)
             Bundle searchExtras = new Bundle();
             searchExtras.putInt("android.media.browse.CONTENT_STYLE_BROWSABLE_HINT", 1);
+            searchExtras.putString("android.media.browse.CONTENT_STYLE_GROUP_TITLE_HINT", "🎧 La Mia Musica");
             MediaDescriptionCompat descSearch = new MediaDescriptionCompat.Builder()
                     .setMediaId(MEDIA_ID_SEARCH)
                     .setTitle("🔍 Cerca Musica")
@@ -1900,17 +2019,6 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                     .setExtras(searchExtras)
                     .build();
             items.add(new MediaBrowserCompat.MediaItem(descSearch, MediaBrowserCompat.MediaItem.FLAG_BROWSABLE));
-
-            // 8. Offline Library (Playable)
-            Bundle localExtras = new Bundle();
-            localExtras.putInt("android.media.browse.CONTENT_STYLE_PLAYABLE_HINT", 1);
-            MediaDescriptionCompat descLocal = new MediaDescriptionCompat.Builder()
-                    .setMediaId(MEDIA_ID_LOCAL)
-                    .setTitle("💾 Libreria Locale")
-                    .setSubtitle("Brani scaricati offline")
-                    .setExtras(localExtras)
-                    .build();
-            items.add(new MediaBrowserCompat.MediaItem(descLocal, MediaBrowserCompat.MediaItem.FLAG_PLAYABLE));
 
             result.sendResult(items);
             return;

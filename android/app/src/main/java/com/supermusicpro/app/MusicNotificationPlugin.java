@@ -300,10 +300,11 @@ public class MusicNotificationPlugin extends Plugin {
             int currentIndex = call.getInt("currentIndex", 0);
             JSArray favsArr = call.getArray("favorites");
             JSArray playlistsArr = call.getArray("playlists");
+            JSArray catalogArr = call.getArray("catalog");
 
             MusicPlayerService svc = MusicPlayerService.getInstance();
             if (svc != null) {
-                svc.syncFromApp(queueArr, currentIndex, favsArr, playlistsArr);
+                svc.syncFromApp(queueArr, currentIndex, favsArr, playlistsArr, catalogArr);
             }
             call.resolve();
         } catch (Exception e) {

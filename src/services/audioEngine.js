@@ -98,14 +98,15 @@ class AudioEngine {
     }
   }
 
-  syncAppData(queue = [], currentIndex = 0, favorites = [], playlists = []) {
+  syncAppData(queue = [], currentIndex = 0, favorites = [], playlists = [], catalog = []) {
     if (Capacitor.isNativePlatform()) {
       try {
         MusicNotification.syncAppData({
           queue: (queue || []).slice(0, 100),
           currentIndex: currentIndex || 0,
           favorites: (favorites || []).slice(0, 100),
-          playlists: (playlists || []).slice(0, 50)
+          playlists: (playlists || []).slice(0, 50),
+          catalog: (catalog || []).slice(0, 40)
         }).catch(() => {});
       } catch {}
     }
