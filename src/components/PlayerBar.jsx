@@ -255,7 +255,11 @@ export default function PlayerBar({
             )}
           </div>
           <MarqueeText
-            text={currentTrack.artist}
+            text={
+              currentTrack.artist && !['brano', 'album', 'artista', 'singolo', 'track', 'song'].includes(currentTrack.artist.trim().toLowerCase())
+                ? currentTrack.artist
+                : (currentTrack.channel || currentTrack.author || 'SuperMusic Artist')
+            }
             className="text-[11px] md:text-xs text-slate-400 hover:text-slate-200"
           />
           <div className="hidden sm:flex items-center gap-2 mt-0.5">

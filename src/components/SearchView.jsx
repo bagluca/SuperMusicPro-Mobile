@@ -216,7 +216,7 @@ export default function SearchView({
     if (item.resultType === 'album' && item.browseId) {
       setLoadingItemId(item.id);
       try {
-        const albumTracks = await musicService.fetchAlbumTracks(item.browseId);
+        const albumTracks = await musicService.fetchAlbumTracks(item.browseId, item.artist, item.title);
         if (albumTracks && albumTracks.length > 0) {
           onPlayTrack(albumTracks[0], albumTracks, {
             type: 'search',
@@ -231,7 +231,7 @@ export default function SearchView({
     } else if (item.resultType === 'artist' && item.browseId) {
       setLoadingItemId(item.id);
       try {
-        const artistTracks = await musicService.fetchArtistTopTracks(item.browseId, item.title);
+        const artistTracks = await musicService.fetchArtistTopTracks(item.browseId, item.artist || item.title);
         if (artistTracks && artistTracks.length > 0) {
           onPlayTrack(artistTracks[0], artistTracks, {
             type: 'search',
@@ -459,7 +459,11 @@ export default function SearchView({
                       </div>
 
                       <MarqueeText
-                        text={`${item.artist}${item.album && item.album !== 'Singolo' && item.album !== 'Album' ? ` • ${item.album}` : ''}`}
+                        text={
+                          item.resultType === 'artist'
+                            ? 'Profilo Artista'
+                            : `${item.artist}${item.album && item.album !== 'Singolo' && item.album !== 'Album' ? ` • ${item.album}` : ''}`
+                        }
                         className="text-[11px] text-slate-400 mt-0.5"
                       />
                     </div>

@@ -190,7 +190,11 @@ export default function LyricsView({ currentTrack, isPlaying }) {
           ) : null}
           <div className="flex-1 min-w-0 overflow-hidden">
             <MarqueeText
-              text={`${currentTrack.title} • ${currentTrack.artist || 'Artista'}`}
+              text={`${currentTrack.title}${
+                currentTrack.artist && !['brano', 'album', 'artista', 'singolo', 'track', 'song'].includes(currentTrack.artist.trim().toLowerCase())
+                  ? ` • ${currentTrack.artist}`
+                  : (currentTrack.channel ? ` • ${currentTrack.channel}` : '')
+              }`}
               className="text-xs text-slate-300 font-medium"
             />
           </div>

@@ -224,6 +224,14 @@ async function getWorkingBackend() {
 
 export const DEFAULT_ALBUM_COVER = '/default_cover.svg';
 
+const TYPE_WORDS = new Set([
+  'brano', 'canzone', 'song', 'track',
+  'artista', 'artist',
+  'album', 'singolo', 'single', 'ep', 'raccolta',
+  'video', 'videoclip', 'video musicale',
+  'playlist', 'puntata', 'podcast', 'profilo', 'post'
+]);
+
 export function formatDuration(seconds) {
   if (isNaN(seconds) || seconds < 0) return '0:00';
   const m = Math.floor(seconds / 60);
@@ -231,7 +239,7 @@ export function formatDuration(seconds) {
   return `${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-function parseRenderer(renderer, forcedType = null) {
+function parseRenderer(renderer, forcedType = null, parentContextArtist = null) {
   if (!renderer) return null;
   const flexColumns = renderer.flexColumns || [];
   const col0Runs = flexColumns[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
@@ -239,8 +247,6 @@ function parseRenderer(renderer, forcedType = null) {
   if (!title) return null;
 
   const col1Runs = flexColumns[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-  const fullSub = col1Runs.map(r => r.text).join('');
-  const parts = fullSub.split(' • ').map(s => s.trim());
 
   const thumbs = renderer.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
   const cover = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : DEFAULT_ALBUM_COVER;
@@ -260,13 +266,70 @@ function parseRenderer(renderer, forcedType = null) {
     || renderer.navigationEndpoint?.watchPlaylistEndpoint?.playlistId
     || null;
 
+  let detectedType = null;
+  let artist = null;
+  let album = null;
+  let duration = 180;
+  let durStr = null;
+
+  // Analyze every run in flexColumns[1]
+  for (const r of col1Runs) {
+    const raw = (r.text || '').trim();
+    if (!raw || raw === '•') continue;
+    const low = raw.toLowerCase();
+    const rPageType = r.navigationEndpoint?.browseEndpoint?.browseEndpointContextSupportedConfigs?.browseEndpointContextMusicConfig?.pageType || '';
+    const rBrowseId = r.navigationEndpoint?.browseEndpoint?.browseId || '';
+
+    // Check if this run is a type indicator word (Brano, Album, Artista, Singolo, Video...)
+    if (TYPE_WORDS.has(low)) {
+      if (!detectedType) {
+        if (low === 'artista' || low === 'artist') detectedType = 'artist';
+        else if (['album', 'singolo', 'single', 'ep', 'raccolta'].includes(low)) detectedType = 'album';
+        else detectedType = 'track';
+      }
+      continue;
+    }
+
+    // Check duration format (e.g. 3:45 or 1:02:15)
+    if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(raw)) {
+      durStr = raw;
+      duration = parseDurationString(raw);
+      continue;
+    }
+
+    // Skip view counts, listeners, subscriber numbers, year
+    if (/visualizzazioni|ascoltatori|iscritti|views|subscribers/i.test(low) || /^(19|20)\d{2}$/.test(raw)) {
+      continue;
+    }
+
+    // Explicit artist navigation endpoint
+    if (rPageType === 'MUSIC_PAGE_TYPE_ARTIST' || rBrowseId.startsWith('UC')) {
+      if (!artist) artist = raw;
+      continue;
+    }
+
+    // Explicit album navigation endpoint
+    if (rPageType === 'MUSIC_PAGE_TYPE_ALBUM' || rBrowseId.startsWith('MPRE')) {
+      if (!album) album = raw;
+      continue;
+    }
+
+    // Otherwise, first non-type text is the artist, second is album
+    if (!artist) {
+      artist = raw;
+    } else if (!album) {
+      album = raw;
+    }
+  }
+
+  // Determine resultType (Traccia, Artista, Album) - solely for Search filtering & badges
   let resultType = 'track';
   let typeLabel = 'Traccia';
 
-  if (forcedType === 'artists' || pageType === 'MUSIC_PAGE_TYPE_ARTIST' || fullSub.toLowerCase().includes('artista') || (browseId && browseId.startsWith('UC'))) {
+  if (forcedType === 'artists' || detectedType === 'artist' || pageType === 'MUSIC_PAGE_TYPE_ARTIST' || (browseId && browseId.startsWith('UC'))) {
     resultType = 'artist';
     typeLabel = 'Artista';
-  } else if (forcedType === 'albums' || pageType === 'MUSIC_PAGE_TYPE_ALBUM' || fullSub.toLowerCase().startsWith('album') || fullSub.toLowerCase().startsWith('singolo') || (browseId && browseId.startsWith('MPRE'))) {
+  } else if (forcedType === 'albums' || detectedType === 'album' || pageType === 'MUSIC_PAGE_TYPE_ALBUM' || (browseId && browseId.startsWith('MPRE'))) {
     resultType = 'album';
     typeLabel = 'Album';
   } else {
@@ -274,37 +337,20 @@ function parseRenderer(renderer, forcedType = null) {
     typeLabel = 'Traccia';
   }
 
-  let artist = parts[0] || 'Artista';
-  let album = 'Singolo';
-  let duration = 180;
+  // Fallback for artist if empty or if it was mistakenly a type word
+  if (!artist || TYPE_WORDS.has(artist.toLowerCase())) {
+    if (resultType === 'artist') {
+      artist = title;
+    } else if (parentContextArtist && !TYPE_WORDS.has(parentContextArtist.toLowerCase())) {
+      artist = parentContextArtist;
+    } else {
+      artist = 'Artista';
+    }
+  }
 
-  if (resultType === 'track') {
-    if (parts.length >= 2) {
-      const last = parts[parts.length - 1];
-      if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(last)) {
-        duration = parseDurationString(last);
-        if (parts.length >= 3) {
-          album = parts[1];
-          artist = parts[0];
-        }
-      } else {
-        album = last;
-      }
-    }
-    if (['brano', 'canzone', 'video'].includes(artist.toLowerCase()) && parts.length > 1) {
-      artist = parts[1];
-      if (parts.length > 2 && !/^\d{1,2}:\d{2}(?::\d{2})?$/.test(parts[2])) {
-        album = parts[2];
-      }
-    }
-  } else if (resultType === 'album') {
-    if (parts.length >= 2) {
-      artist = parts[1];
-      album = title;
-    }
-  } else if (resultType === 'artist') {
-    artist = title;
-    album = 'Artista';
+  // If album is still empty or a type word
+  if (!album || TYPE_WORDS.has(album.toLowerCase())) {
+    album = resultType === 'album' ? title : 'Singolo';
   }
 
   const resolvedId = videoId ? `yt_${videoId}` : (browseId ? `yt_${browseId}` : `yt_${title.replace(/\s+/g, '_')}`);
@@ -321,7 +367,7 @@ function parseRenderer(renderer, forcedType = null) {
     album,
     cover: cover || DEFAULT_ALBUM_COVER,
     duration,
-    formattedDuration: formatDuration(duration),
+    formattedDuration: durStr || formatDuration(duration),
     source: 'YouTube Music'
   };
 }
@@ -563,6 +609,10 @@ export const musicService = {
               let rType = isArtist ? 'artist' : (isAlbum ? 'album' : 'track');
               let rLabel = isArtist ? 'Artista' : (isAlbum ? 'Album' : 'Traccia');
 
+              let cardArtist = isArtist
+                ? topTitle
+                : (subParts.find(p => !TYPE_WORDS.has(p.toLowerCase()) && !/visualizzazioni|ascoltatori|iscritti/i.test(p)) || topTitle);
+
               if (topTitle) {
                 const thumbs = card.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
                 const topCover = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : DEFAULT_ALBUM_COVER;
@@ -574,7 +624,7 @@ export const musicService = {
                   resultType: rType,
                   typeLabel: rLabel,
                   title: topTitle,
-                  artist: isArtist ? topTitle : (subParts[1] || subParts[0] || 'Artista'),
+                  artist: cardArtist,
                   album: isAlbum ? topTitle : 'Top Hit',
                   cover: topCover,
                   duration: 180,
@@ -585,7 +635,7 @@ export const musicService = {
 
               if (Array.isArray(card.contents)) {
                 for (const it of card.contents) {
-                  const parsed = parseRenderer(it.musicResponsiveListItemRenderer, filterType);
+                  const parsed = parseRenderer(it.musicResponsiveListItemRenderer, filterType, isArtist ? topTitle : cardArtist);
                   if (parsed && !results.some(r => r.id === parsed.id)) {
                     results.push(parsed);
                   }
@@ -666,7 +716,7 @@ export const musicService = {
     }
   },
 
-  async fetchAlbumTracks(browseId) {
+  async fetchAlbumTracks(browseId, albumArtist = '', albumTitle = '') {
     if (!browseId) return [];
     try {
       const clientContext = {
@@ -691,12 +741,22 @@ export const musicService = {
             const col0 = item.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
             const title = col0[0]?.text || '';
             const col1 = item.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-            const sub = col1.map(r => r.text).join('');
-            const parts = sub.split(' • ').map(p => p.trim());
+            
+            let trackArtist = albumArtist || '';
+            let durStr = '3:00';
+            for (const r of col1) {
+              const text = (r.text || '').trim();
+              if (!text || text === '•') continue;
+              if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(text)) {
+                durStr = text;
+              } else if (!TYPE_WORDS.has(text.toLowerCase()) && !trackArtist) {
+                trackArtist = text;
+              }
+            }
+
             const vid = item.playlistItemData?.videoId
               || item.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId
               || col0[0]?.navigationEndpoint?.watchEndpoint?.videoId;
-            const durStr = parts.find(p => /^\d+:\d+$/.test(p)) || '3:00';
             const thumbs = item.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
             const cover = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : DEFAULT_ALBUM_COVER;
             if (vid && title) {
@@ -704,8 +764,8 @@ export const musicService = {
                 id: `yt_${vid}`,
                 videoId: vid,
                 title,
-                artist: parts[0] || 'Artista',
-                album: 'Album',
+                artist: trackArtist || albumArtist || 'Artista',
+                album: albumTitle || 'Album',
                 cover: cover || DEFAULT_ALBUM_COVER,
                 duration: parseDurationString(durStr),
                 formattedDuration: durStr,
@@ -747,12 +807,22 @@ export const musicService = {
             const col0 = item.flexColumns?.[0]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
             const title = col0[0]?.text || '';
             const col1 = item.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
-            const sub = col1.map(r => r.text).join('');
-            const parts = sub.split(' • ').map(p => p.trim());
+            
+            let trackArtist = artistName || '';
+            let durStr = '3:00';
+            for (const r of col1) {
+              const text = (r.text || '').trim();
+              if (!text || text === '•') continue;
+              if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(text)) {
+                durStr = text;
+              } else if (!TYPE_WORDS.has(text.toLowerCase()) && !trackArtist) {
+                trackArtist = text;
+              }
+            }
+
             const vid = item.playlistItemData?.videoId
               || item.overlay?.musicItemThumbnailOverlayRenderer?.content?.musicPlayButtonRenderer?.playNavigationEndpoint?.watchEndpoint?.videoId
               || col0[0]?.navigationEndpoint?.watchEndpoint?.videoId;
-            const durStr = parts.find(p => /^\d+:\d+$/.test(p)) || '3:00';
             const thumbs = item.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
             const cover = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : DEFAULT_ALBUM_COVER;
             if (vid && title) {
@@ -760,7 +830,7 @@ export const musicService = {
                 id: `yt_${vid}`,
                 videoId: vid,
                 title,
-                artist: artistName || parts[0] || 'Artista',
+                artist: trackArtist || artistName || 'Artista',
                 album: 'Top Hit',
                 cover: cover || DEFAULT_ALBUM_COVER,
                 duration: parseDurationString(durStr),
