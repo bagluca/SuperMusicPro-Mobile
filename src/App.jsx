@@ -503,8 +503,6 @@ export default function App() {
       <TitleBar 
         onOpenInfo={() => setIsInfoOpen(true)} 
         onOpenRecognition={() => setIsRecognitionOpen(true)}
-        canGoBack={currentView !== 'home' || isRecognitionOpen || isInfoOpen || isSettingsOpen || isSleepTimerOpen || isCreatePlaylistOpen || !!trackToAddToPlaylist || isQueueOpen}
-        onBack={handleBackNavigation}
       />
 
       {/* Main App Workspace */}

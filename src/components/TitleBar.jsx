@@ -1,13 +1,11 @@
 import React from 'react';
-import { Minus, Square, X, Info, Mic, ChevronLeft } from 'lucide-react';
+import { Minus, Square, X, Info, Mic } from 'lucide-react';
 import logoImg from '../assets/logo.png';
 
 export default function TitleBar({ 
   title = "SuperMusicPro", 
   onOpenInfo,
-  onOpenRecognition,
-  canGoBack = false,
-  onBack
+  onOpenRecognition
 }) {
   const handleMinimize = () => {
     if (window.electronAPI) {
@@ -36,16 +34,7 @@ export default function TitleBar({
     >
       <div className="w-full h-11 md:h-9 flex items-center justify-between px-3">
         {/* App branding */}
-      <div className="flex items-center space-x-2 font-medium tracking-wide">
-        {canGoBack && onBack && (
-          <button
-            onClick={onBack}
-            className="p-1 -ml-1 mr-0.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-emerald-400 hover:text-white border border-slate-700/60 active:scale-90 transition-all flex items-center justify-center shrink-0"
-            title="Torna indietro"
-          >
-            <ChevronLeft className="w-4 h-4" />
-          </button>
-        )}
+      <div className="flex items-center space-x-2.5 font-medium tracking-wide">
         {/* App Icon + Neon Green Circle */}
         <img src={logoImg} alt="SuperMusic PRO" className="w-5 h-5 rounded-md object-cover shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
         <span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_8px_#10b981]"></span>
