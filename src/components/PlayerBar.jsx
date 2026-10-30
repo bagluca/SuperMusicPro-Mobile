@@ -174,46 +174,48 @@ export default function PlayerBar({
 
   return (
     <footer className="relative h-14 md:h-22 theme-bg-secondary/95 border-t theme-border px-3 md:px-6 flex items-center justify-between backdrop-blur-xl select-none z-40 flex-shrink-0">
-      {/* Mobile-only sleek neon touch-draggable scrubber */}
-      <div 
-        ref={mobileScrubberRef}
-        onPointerDown={handlePointerDown}
-        onPointerMove={handlePointerMove}
-        onPointerUp={handlePointerUp}
-        onPointerCancel={handlePointerCancel}
-        className="sm:hidden absolute -top-3 left-0 right-0 h-8 flex items-center cursor-pointer select-none touch-none z-30 px-0"
-        title="Trascina per scorrere il brano"
-      >
-        <div className={`w-full bg-slate-800/90 relative transition-all duration-100 ${isDragging ? 'h-2 bg-slate-700' : 'h-1.5'}`}>
-          {/* Progress fill */}
-          <div 
-            className="h-full bg-gradient-to-r from-emerald-500 via-teal-300 to-emerald-400 relative shadow-[0_0_12px_rgba(16,185,129,0.95),0_0_3px_#34d399]"
-            style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
-          />
-
-          {/* Draggable Neon Thumb Knob */}
-          <div 
-            className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full bg-white border-2 border-emerald-400 pointer-events-none transition-transform ${
-              isDragging 
-                ? 'w-5 h-5 scale-125 shadow-[0_0_18px_#10b981,0_0_6px_#fff]' 
-                : 'w-3.5 h-3.5 shadow-[0_0_8px_rgba(16,185,129,0.9)]'
-            }`}
-            style={{ left: `${Math.min(100, Math.max(0, progressPercent))}%` }}
-          />
-
-          {/* Floating Time Preview Tooltip while dragging */}
-          {isDragging && (
+      {/* Mobile-only sleek neon touch-draggable scrubber (hidden in lyrics view) */}
+      {!isLyricsOpen && (
+        <div 
+          ref={mobileScrubberRef}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerCancel}
+          className="sm:hidden absolute -top-3 left-0 right-0 h-8 flex items-center cursor-pointer select-none touch-none z-30 px-0"
+          title="Trascina per scorrere il brano"
+        >
+          <div className={`w-full bg-slate-800/90 relative transition-all duration-100 ${isDragging ? 'h-2 bg-slate-700' : 'h-1.5'}`}>
+            {/* Progress fill */}
             <div 
-              className="absolute -top-9 -translate-x-1/2 bg-slate-900/95 text-white font-mono text-[11px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/60 shadow-2xl pointer-events-none whitespace-nowrap z-50 flex items-center gap-1 backdrop-blur-md"
-              style={{ left: `${Math.min(90, Math.max(10, progressPercent))}%` }}
-            >
-              <span className="text-emerald-400">{formatTime(effectiveTime)}</span>
-              <span className="text-slate-500">/</span>
-              <span className="text-slate-400">{formatTime(duration)}</span>
-            </div>
-          )}
+              className="h-full bg-gradient-to-r from-emerald-500 via-teal-300 to-emerald-400 relative shadow-[0_0_12px_rgba(16,185,129,0.95),0_0_3px_#34d399]"
+              style={{ width: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+            />
+
+            {/* Draggable Neon Thumb Knob */}
+            <div 
+              className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full bg-white border-2 border-emerald-400 pointer-events-none transition-transform ${
+                isDragging 
+                  ? 'w-5 h-5 scale-125 shadow-[0_0_18px_#10b981,0_0_6px_#fff]' 
+                  : 'w-3.5 h-3.5 shadow-[0_0_8px_rgba(16,185,129,0.9)]'
+              }`}
+              style={{ left: `${Math.min(100, Math.max(0, progressPercent))}%` }}
+            />
+
+            {/* Floating Time Preview Tooltip while dragging */}
+            {isDragging && (
+              <div 
+                className="absolute -top-9 -translate-x-1/2 bg-slate-900/95 text-white font-mono text-[11px] font-bold px-2 py-0.5 rounded-md border border-emerald-500/60 shadow-2xl pointer-events-none whitespace-nowrap z-50 flex items-center gap-1 backdrop-blur-md"
+                style={{ left: `${Math.min(90, Math.max(10, progressPercent))}%` }}
+              >
+                <span className="text-emerald-400">{formatTime(effectiveTime)}</span>
+                <span className="text-slate-500">/</span>
+                <span className="text-slate-400">{formatTime(duration)}</span>
+              </div>
+            )}
+          </div>
         </div>
-      </div>
+      )}
       {/* Track details (Left) */}
       <div className="flex items-center space-x-3 flex-1 md:w-1/4 md:flex-initial min-w-0 md:min-w-[210px]">
         <div 

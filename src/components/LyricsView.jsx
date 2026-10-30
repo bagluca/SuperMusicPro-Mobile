@@ -4,25 +4,12 @@ import { audioEngine } from '../services/audioEngine';
 import { Loader2, ArrowDownCircle, RefreshCw } from 'lucide-react';
 import MarqueeText from './MarqueeText';
 
-function formatTime(seconds) {
-  if (isNaN(seconds) || seconds < 0) return '0:00';
-  const m = Math.floor(seconds / 60);
-  const s = Math.floor(seconds % 60);
-  return `${m}:${s < 10 ? '0' : ''}${s}`;
-}
-
 export default function LyricsView({ currentTrack, isPlaying }) {
   const [lyricsData, setLyricsData] = useState(null);
   const [loading, setLoading] = useState(false);
   const [activeIndex, setActiveIndex] = useState(-1);
   const [syncOffset, setSyncOffset] = useState(0); // Offset in seconds
   const [isUserInteracting, setIsUserInteracting] = useState(false);
-  const [trackCurrentTime, setTrackCurrentTime] = useState(0);
-  const [trackDuration, setTrackDuration] = useState(180);
-  const [isScrubbing, setIsScrubbing] = useState(false);
-  const [scrubTime, setScrubTime] = useState(null);
-  const isScrubbingRef = useRef(false);
-  const scrubberContainerRef = useRef(null);
   const [fontSize, setFontSize] = useState(() => {
     try {
       return Number(localStorage.getItem('supermusicpro_lyrics_fontsize')) || 22;
@@ -34,84 +21,6 @@ export default function LyricsView({ currentTrack, isPlaying }) {
   const containerRef = useRef(null);
   const lineRefs = useRef([]);
   const userInteractionTimeoutRef = useRef(null);
-
-  useEffect(() => {
-    const unsubTime = audioEngine.on('timeupdate', ({ currentTime: curr, duration: dur }) => {
-      if (!isScrubbingRef.current) {
-        setTrackCurrentTime(curr);
-      }
-      if (dur && !isNaN(dur) && dur > 0) {
-        setTrackDuration(dur);
-      }
-    });
-
-    const unsubMeta = audioEngine.on('loadedmetadata', ({ duration: dur }) => {
-      if (dur && !isNaN(dur) && dur > 0) setTrackDuration(dur);
-    });
-
-    return () => {
-      unsubTime();
-      unsubMeta();
-    };
-  }, []);
-
-  const updateScrubFromClientX = (clientX) => {
-    const el = scrubberContainerRef.current;
-    if (!el) return undefined;
-    const rect = el.getBoundingClientRect();
-    if (rect.width <= 0) return undefined;
-    const clickX = clientX - rect.left;
-    const ratio = Math.max(0, Math.min(1, clickX / rect.width));
-    const seekTime = ratio * (trackDuration || 180);
-    setScrubTime(seekTime);
-    setTrackCurrentTime(seekTime);
-    return seekTime;
-  };
-
-  const handleScrubberPointerDown = (e) => {
-    e.preventDefault();
-    e.stopPropagation();
-    try {
-      e.currentTarget.setPointerCapture(e.pointerId);
-    } catch {}
-    isScrubbingRef.current = true;
-    setIsScrubbing(true);
-    updateScrubFromClientX(e.clientX);
-  };
-
-  const handleScrubberPointerMove = (e) => {
-    if (!isScrubbingRef.current) return;
-    e.preventDefault();
-    e.stopPropagation();
-    updateScrubFromClientX(e.clientX);
-  };
-
-  const handleScrubberPointerUp = (e) => {
-    if (isScrubbingRef.current) {
-      e.preventDefault();
-      e.stopPropagation();
-      try {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch {}
-      const calculated = updateScrubFromClientX(e.clientX);
-      const targetTime = calculated !== undefined ? calculated : (scrubTime !== null ? scrubTime : trackCurrentTime);
-      audioEngine.seek(targetTime);
-      isScrubbingRef.current = false;
-      setIsScrubbing(false);
-      setScrubTime(null);
-    }
-  };
-
-  const handleScrubberPointerCancel = (e) => {
-    if (isScrubbingRef.current) {
-      try {
-        e.currentTarget.releasePointerCapture(e.pointerId);
-      } catch {}
-      isScrubbingRef.current = false;
-      setIsScrubbing(false);
-      setScrubTime(null);
-    }
-  };
 
   const handleUpdateFontSize = (newSize) => {
     setFontSize(newSize);
@@ -335,38 +244,6 @@ export default function LyricsView({ currentTrack, isPlaying }) {
             </button>
           </div>
         </div>
-      </div>
-
-      {/* Interactive Song Scrubber in Lyrics View */}
-      <div className="relative z-20 px-4 py-2 bg-slate-950/85 border-b border-slate-800/80 backdrop-blur-md flex items-center gap-3 select-none">
-        <span className="text-[11px] font-mono text-emerald-400 font-semibold w-9 text-right shrink-0">
-          {formatTime(scrubTime !== null ? scrubTime : trackCurrentTime)}
-        </span>
-        <div 
-          ref={scrubberContainerRef}
-          onPointerDown={handleScrubberPointerDown}
-          onPointerMove={handleScrubberPointerMove}
-          onPointerUp={handleScrubberPointerUp}
-          onPointerCancel={handleScrubberPointerCancel}
-          className="relative flex-1 h-7 flex items-center cursor-pointer touch-none select-none group"
-          title="Trascina per scorrere la traccia"
-        >
-          <div className={`w-full bg-slate-800 rounded-full overflow-hidden transition-all relative ${isScrubbing ? 'h-2 bg-slate-700' : 'h-1.5 group-hover:h-2'}`}>
-            <div 
-              className="h-full bg-gradient-to-r from-emerald-500 via-teal-300 to-emerald-400 rounded-full shadow-[0_0_12px_rgba(16,185,129,0.9),0_0_3px_#34d399]"
-              style={{ width: `${Math.min(100, Math.max(0, trackDuration > 0 ? ((scrubTime !== null ? scrubTime : trackCurrentTime) / trackDuration) * 100 : 0))}%` }}
-            />
-          </div>
-          <div 
-            className={`absolute top-1/2 -translate-y-1/2 -translate-x-1/2 rounded-full bg-white border-2 border-emerald-400 pointer-events-none transition-transform ${
-              isScrubbing ? 'w-4 h-4 scale-125 shadow-[0_0_14px_#10b981]' : 'w-3 h-3 group-hover:w-3.5 group-hover:h-3.5 shadow-md'
-            }`}
-            style={{ left: `${Math.min(100, Math.max(0, trackDuration > 0 ? ((scrubTime !== null ? scrubTime : trackCurrentTime) / trackDuration) * 100 : 0))}%` }}
-          />
-        </div>
-        <span className="text-[11px] font-mono text-slate-400 w-9 shrink-0">
-          {formatTime(trackDuration)}
-        </span>
       </div>
 
       {/* Re-sync Floating Toast Button */}
