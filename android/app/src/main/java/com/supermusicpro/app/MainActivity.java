@@ -132,6 +132,9 @@ public class MainActivity extends BridgeActivity {
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
+        if (MusicNotificationPlugin.dispatchMediaAction("back_button")) {
+            return;
+        }
         moveTaskToBack(true);
     }
 

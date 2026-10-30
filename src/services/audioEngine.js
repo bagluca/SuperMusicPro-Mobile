@@ -44,6 +44,8 @@ class AudioEngine {
             this.emit('previous');
           } else if (action === 'play_local') {
             this.emit('play_local');
+          } else if (action === 'back_button') {
+            this.emit('back_button');
           }
         });
 
@@ -108,6 +110,14 @@ class AudioEngine {
           playlists: (playlists || []).slice(0, 50),
           catalog: (catalog || []).slice(0, 40)
         }).catch(() => {});
+      } catch {}
+    }
+  }
+
+  minimizeApp() {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        MusicNotification.minimizeApp().catch(() => {});
       } catch {}
     }
   }

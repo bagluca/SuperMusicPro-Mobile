@@ -11,6 +11,7 @@ const KEYS = {
   MATCH_OVERRIDES: 'supermusicpro_match_overrides',
   MATCH_CACHE: 'supermusicpro_match_cache',
   LAST_TRACK: 'supermusicpro_last_track',
+  RECENT_SEARCHES: 'supermusicpro_recent_searches',
 };
 
 const DEFAULT_SETTINGS = {
@@ -255,6 +256,53 @@ export const storageService = {
       localStorage.setItem(KEYS.MATCH_CACHE, JSON.stringify(cache));
     } catch (e) {
       console.error('Failed to update match cache:', e);
+    }
+  },
+
+  getRecentSearches() {
+    try {
+      const data = localStorage.getItem(KEYS.RECENT_SEARCHES);
+      return data ? JSON.parse(data) : [];
+    } catch {
+      return [];
+    }
+  },
+
+  addRecentSearch(query) {
+    if (!query || typeof query !== 'string') return [];
+    const trimmed = query.trim();
+    if (!trimmed) return [];
+    try {
+      const current = this.getRecentSearches();
+      const filtered = current.filter(item => item.toLowerCase() !== trimmed.toLowerCase());
+      const updated = [trimmed, ...filtered].slice(0, 15);
+      localStorage.setItem(KEYS.RECENT_SEARCHES, JSON.stringify(updated));
+      return updated;
+    } catch (e) {
+      console.error('Failed to add recent search:', e);
+      return [];
+    }
+  },
+
+  removeRecentSearch(query) {
+    try {
+      const current = this.getRecentSearches();
+      const updated = current.filter(item => item.toLowerCase() !== (query || '').trim().toLowerCase());
+      localStorage.setItem(KEYS.RECENT_SEARCHES, JSON.stringify(updated));
+      return updated;
+    } catch (e) {
+      console.error('Failed to remove recent search:', e);
+      return [];
+    }
+  },
+
+  clearRecentSearches() {
+    try {
+      localStorage.removeItem(KEYS.RECENT_SEARCHES);
+      return [];
+    } catch (e) {
+      console.error('Failed to clear recent searches:', e);
+      return [];
     }
   }
 };

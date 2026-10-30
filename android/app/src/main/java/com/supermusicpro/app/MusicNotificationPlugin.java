@@ -55,12 +55,14 @@ public class MusicNotificationPlugin extends Plugin {
         return true;
     }
 
-    public static void dispatchMediaAction(String action) {
+    public static boolean dispatchMediaAction(String action) {
         if (isBridgeReady()) {
             JSObject data = new JSObject();
             data.put("action", action);
             instance.notifyListeners("onMediaAction", data);
+            return true;
         }
+        return false;
     }
 
     public static void dispatchPlaybackProgress(double currentTime, long duration) {
@@ -310,6 +312,14 @@ public class MusicNotificationPlugin extends Plugin {
         } catch (Exception e) {
             call.reject("Error syncing app data: " + e.getMessage());
         }
+    }
+
+    @PluginMethod
+    public void minimizeApp(PluginCall call) {
+        if (getActivity() != null) {
+            getActivity().moveTaskToBack(true);
+        }
+        call.resolve();
     }
 
     @PluginMethod

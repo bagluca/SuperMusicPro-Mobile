@@ -43,6 +43,23 @@ export default function App() {
   const [settings, setSettings] = useState(() => storageService.getSettings());
   const [currentView, setCurrentView] = useState('home');
   const [previousView, setPreviousView] = useState('home');
+  const currentViewRef = useRef(currentView);
+
+  useEffect(() => {
+    if (currentViewRef.current !== currentView) {
+      setPreviousView(currentViewRef.current);
+      currentViewRef.current = currentView;
+    }
+  }, [currentView]);
+
+  const [searchState, setSearchState] = useState({
+    query: '',
+    results: [],
+    filterType: 'all',
+    limit: 20,
+    hasMore: true
+  });
+
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [selectedSource, setSelectedSource] = useState('all');
 
@@ -166,6 +183,12 @@ export default function App() {
       }
     });
 
+    const unsubBack = audioEngine.on('back_button', () => {
+      if (handleBackNavigationRef.current) {
+        handleBackNavigationRef.current();
+      }
+    });
+
     const unsubNativeTrack = audioEngine.on('nativetrackchange', (trackData) => {
       if (trackData && trackData.title) {
         const newTrack = {
@@ -195,6 +218,7 @@ export default function App() {
       unsubPrev();
       unsubEnded();
       unsubPlayLocal();
+      unsubBack();
       unsubNativeTrack();
     };
   }, []);
@@ -429,6 +453,48 @@ export default function App() {
     storageService.saveSettings(newSettings);
   };
 
+  const handleBackNavigation = () => {
+    // 1. Close any open overlays or modals first
+    if (isRecognitionOpen) { setIsRecognitionOpen(false); return; }
+    if (isInfoOpen) { setIsInfoOpen(false); return; }
+    if (isSettingsOpen) { setIsSettingsOpen(false); return; }
+    if (isSleepTimerOpen) { setIsSleepTimerOpen(false); return; }
+    if (isCreatePlaylistOpen) { setIsCreatePlaylistOpen(false); return; }
+    if (trackToAddToPlaylist) { setTrackToAddToPlaylist(null); return; }
+    if (isQueueOpen) { setIsQueueOpen(false); return; }
+
+    // 2. User requirement: "Se sto eseguendo un brano avviato a seguito di ricerca e mi sposto tra le diverse funzioni del programma e premo il tasto indietro, o il tasto cerca, deve tornare alla pagina di ricerca con l'elenco delle canzoni che avevo trovato tra cui quella attualmente riprodotta, evidenziata."
+    if (playbackContextRef.current?.type === 'search' && currentView !== 'search') {
+      setCurrentView('search');
+      return;
+    }
+
+    // 3. If in lyrics view
+    if (currentView === 'lyrics') {
+      setCurrentView(previousView && previousView !== 'lyrics' ? previousView : 'home');
+      return;
+    }
+
+    // 4. If in single playlist view, go back to playlists overview
+    if (currentView === 'playlist') {
+      setSelectedPlaylistId(null);
+      setCurrentView('playlists');
+      return;
+    }
+
+    // 5. If in any other non-home view, return to home
+    if (currentView !== 'home') {
+      setCurrentView('home');
+      return;
+    }
+
+    // 6. If already on home with no modals, minimize app on Android
+    audioEngine.minimizeApp();
+  };
+
+  const handleBackNavigationRef = useRef(handleBackNavigation);
+  handleBackNavigationRef.current = handleBackNavigation;
+
   const selectedPlaylist = playlists.find(p => p.id === selectedPlaylistId);
 
   return (
@@ -437,6 +503,8 @@ export default function App() {
       <TitleBar 
         onOpenInfo={() => setIsInfoOpen(true)} 
         onOpenRecognition={() => setIsRecognitionOpen(true)}
+        canGoBack={currentView !== 'home' || isRecognitionOpen || isInfoOpen || isSettingsOpen || isSleepTimerOpen || isCreatePlaylistOpen || !!trackToAddToPlaylist || isQueueOpen}
+        onBack={handleBackNavigation}
       />
 
       {/* Main App Workspace */}
@@ -484,6 +552,8 @@ export default function App() {
               onToggleLike={handleToggleLike}
               onOpenAddToPlaylist={(track) => setTrackToAddToPlaylist(track)}
               onOpenRecognition={() => setIsRecognitionOpen(true)}
+              searchState={searchState}
+              setSearchState={setSearchState}
             />
           )}
 
