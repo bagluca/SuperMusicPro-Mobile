@@ -269,70 +269,73 @@ export default function HomeView({
               <div
                 key={track.id}
                 onClick={() => onPlayTrack(track, tracks, { type: selectedCategory && selectedCategory !== 'all' ? 'category' : 'home', category: selectedCategory, title: 'Tendenze' })}
-                className={`track-item-perf relative p-2.5 rounded-xl transition-colors flex items-center justify-between gap-2.5 cursor-pointer group border overflow-hidden ${
+                className={`track-item-perf relative p-2.5 rounded-xl transition-colors flex flex-col justify-between gap-2 cursor-pointer group border overflow-hidden ${
                   isThisPlaying
                     ? 'bg-emerald-500/15 border-emerald-500/40 shadow-sm'
                     : 'bg-slate-900/60 hover:bg-slate-800/80 border-slate-800/80 hover:border-slate-700'
                 }`}
               >
-                <div className="relative w-12 h-12 shrink-0">
-                  <img
-                    src={track.cover}
-                    alt={track.title}
-                    loading="lazy"
-                    decoding="async"
-                    className="w-full h-full rounded-lg object-cover shadow"
-                  />
-                  <div className={`absolute inset-0 bg-slate-950/50 rounded-lg flex items-center justify-center ${
-                    isThisPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                  }`}>
-                    <Play className="w-4 h-4 fill-white text-white ml-0.5" />
-                  </div>
-                </div>
-
-                {/* Text container */}
-                <div className="flex-1 min-w-0 py-0.5 overflow-hidden">
-                  <MarqueeText
-                    text={track.title}
-                    className={`text-xs font-semibold ${isThisPlaying ? 'text-emerald-400' : 'text-white'}`}
-                  />
-                  <div className="flex items-center gap-1.5 mt-0.5 min-w-0 overflow-hidden">
-                    <MarqueeText
-                      text={track.artist}
-                      className="text-[11px] text-slate-400"
+                {/* Upper row: Cover + Title & Artist (full width) */}
+                <div className="flex items-center gap-2.5 w-full min-w-0">
+                  <div className="relative w-12 h-12 shrink-0">
+                    <img
+                      src={track.cover}
+                      alt={track.title}
+                      loading="lazy"
+                      decoding="async"
+                      className="w-full h-full rounded-lg object-cover shadow"
                     />
-                    {track.source && (
-                      <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-medium shrink-0 leading-none ${
-                        track.source.includes('Spotify')
-                          ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
-                          : track.source.includes('Apple')
-                          ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
-                          : 'bg-slate-800 text-slate-400 border border-slate-700/50'
-                      }`}>
-                        {track.source.includes('Spotify') ? 'Spotify' : track.source.includes('Apple') ? 'Apple' : 'YT'}
-                      </span>
-                    )}
+                    <div className={`absolute inset-0 bg-slate-950/50 rounded-lg flex items-center justify-center ${
+                      isThisPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}>
+                      <Play className="w-4 h-4 fill-white text-white ml-0.5" />
+                    </div>
+                  </div>
+
+                  {/* Text container */}
+                  <div className="flex-1 min-w-0 py-0.5 overflow-hidden">
+                    <MarqueeText
+                      text={track.title}
+                      className={`text-xs font-semibold ${isThisPlaying ? 'text-emerald-400' : 'text-white'}`}
+                    />
+                    <div className="flex items-center gap-1.5 mt-0.5 min-w-0 overflow-hidden">
+                      <MarqueeText
+                        text={track.artist}
+                        className="text-[11px] text-slate-400"
+                      />
+                      {track.source && (
+                        <span className={`text-[9px] px-1.5 py-0.5 rounded font-mono font-medium shrink-0 leading-none ${
+                          track.source.includes('Spotify')
+                            ? 'bg-emerald-500/15 text-emerald-300 border border-emerald-500/30'
+                            : track.source.includes('Apple')
+                            ? 'bg-purple-500/15 text-purple-300 border border-purple-500/30'
+                            : 'bg-slate-800 text-slate-400 border border-slate-700/50'
+                        }`}>
+                          {track.source.includes('Spotify') ? 'Spotify' : track.source.includes('Apple') ? 'Apple' : 'YT'}
+                        </span>
+                      )}
+                    </div>
                   </div>
                 </div>
 
-                {/* Tactile Action Buttons with generous touch targets */}
-                <div className="flex items-center space-x-1 flex-shrink-0 z-10">
+                {/* Tactile Action Buttons centered immediately below in the card */}
+                <div className="flex items-center justify-center space-x-6 pt-1.5 border-t border-slate-800/40 w-full z-10">
                   {onOpenAddToPlaylist && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onOpenAddToPlaylist(track);
                       }}
-                      className="w-8 h-8 rounded-lg bg-slate-800/70 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/60"
+                      className="w-9 h-8 rounded-lg bg-slate-800/70 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/60"
                       title="Aggiungi a una playlist"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-4 h-4" />
                     </button>
                   )}
 
                   <button
                     onClick={(e) => handleDownload(track, e)}
-                    className={`w-8 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border ${
+                    className={`w-9 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border ${
                       dlState === 'done'
                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
                         : 'bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/60'
@@ -353,7 +356,7 @@ export default function HomeView({
                       e.stopPropagation();
                       onToggleLike(track);
                     }}
-                    className={`w-8 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border ${
+                    className={`w-9 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border ${
                       isLiked
                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
                         : 'bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/60'

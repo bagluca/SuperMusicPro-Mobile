@@ -209,6 +209,7 @@ export default function App() {
           ...prev,
           ...newTrack
         }));
+        storageService.saveLastTrack(newTrack);
       }
     });
 
@@ -220,6 +221,56 @@ export default function App() {
       unsubPlayLocal();
       unsubBack();
       unsubNativeTrack();
+    };
+  }, []);
+
+  // Synchronize UI state with native background playback (e.g. from Android Auto)
+  useEffect(() => {
+    const syncWithNativePlayback = async () => {
+      try {
+        const state = await audioEngine.getNativePlaybackState();
+        if (state && state.hasActiveTrack && state.title) {
+          const nativeTrack = {
+            title: state.title,
+            artist: state.artist,
+            cover: state.cover,
+            videoId: state.videoId,
+            id: state.videoId ? `yt_${state.videoId}` : `track_${Date.now()}`,
+            duration: state.duration || 0
+          };
+          setCurrentTrack(prev => {
+            if (!prev || prev.title !== nativeTrack.title || prev.videoId !== nativeTrack.videoId) {
+              return nativeTrack;
+            }
+            return prev;
+          });
+          if (typeof state.isPlaying === 'boolean') {
+            setIsPlaying(state.isPlaying);
+          }
+          storageService.saveLastTrack(nativeTrack);
+        }
+      } catch (err) {
+        console.warn('Error syncing with native player:', err);
+      }
+    };
+
+    syncWithNativePlayback();
+
+    const handleVisibilityChange = () => {
+      if (document.visibilityState === 'visible') {
+        syncWithNativePlayback();
+      }
+    };
+    const handleFocus = () => {
+      syncWithNativePlayback();
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleFocus);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleFocus);
     };
   }, []);
 

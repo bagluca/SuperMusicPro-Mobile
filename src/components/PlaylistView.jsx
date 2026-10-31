@@ -425,49 +425,52 @@ export default function PlaylistView({
                 <div
                   key={`${track.id || idx}-${idx}`}
                   onClick={() => onPlayTrack(track, songs, { type: 'playlist', id: playlist?.id || 'liked', title: title })}
-                  className={`flex items-center space-x-3 p-2.5 md:p-3 rounded-xl transition-all cursor-pointer group border ${
+                  className={`flex flex-col p-2.5 md:p-3 rounded-xl transition-all cursor-pointer group border ${
                     isThisPlaying
                       ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
                       : 'bg-slate-900/40 hover:bg-slate-800/60 border-slate-800/60 text-slate-300'
                   }`}
                 >
-                  {/* Track number / play icon */}
-                  <div className="text-xs text-slate-500 font-mono w-5 text-center shrink-0">
-                    <span className="group-hover:hidden">{idx + 1}</span>
-                    <Play className="w-3.5 h-3.5 fill-current hidden group-hover:inline-block text-white" />
+                  {/* Upper row: Track number, Cover, Title & Artist (full width) */}
+                  <div className="flex items-center space-x-3 w-full min-w-0">
+                    {/* Track number / play icon */}
+                    <div className="text-xs text-slate-500 font-mono w-5 text-center shrink-0">
+                      <span className="group-hover:hidden">{idx + 1}</span>
+                      <Play className="w-3.5 h-3.5 fill-current hidden group-hover:inline-block text-white" />
+                    </div>
+
+                    {/* Cover */}
+                    <img
+                      src={track.cover}
+                      alt={track.title}
+                      className="w-10 h-10 rounded-lg object-cover shrink-0 shadow-sm"
+                    />
+
+                    {/* Title & Artist */}
+                    <div className="flex-1 min-w-0 pr-2 overflow-hidden">
+                      <MarqueeText
+                        text={track.title}
+                        className={`text-xs font-semibold ${isThisPlaying ? 'text-emerald-400' : 'text-white'}`}
+                      />
+                      <MarqueeText
+                        text={track.artist}
+                        className="text-[11px] text-slate-400 mt-0.5"
+                      />
+                    </div>
                   </div>
 
-                  {/* Cover */}
-                  <img
-                    src={track.cover}
-                    alt={track.title}
-                    className="w-10 h-10 rounded-lg object-cover shrink-0 shadow-sm"
-                  />
-
-                  {/* Title & Artist */}
-                  <div className="flex-1 min-w-0 pr-2 overflow-hidden">
-                    <MarqueeText
-                      text={track.title}
-                      className={`text-xs font-semibold ${isThisPlaying ? 'text-emerald-400' : 'text-white'}`}
-                    />
-                    <MarqueeText
-                      text={track.artist}
-                      className="text-[11px] text-slate-400 mt-0.5"
-                    />
-                  </div>
-
-                  {/* Actions */}
-                  <div className="flex items-center space-x-1.5 shrink-0 z-10">
+                  {/* Actions centered immediately below in the card */}
+                  <div className="flex items-center justify-center space-x-6 mt-2 pt-1.5 border-t border-slate-800/40 w-full z-10">
                     {onOpenAddToPlaylist && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onOpenAddToPlaylist(track);
                         }}
-                        className="w-8 h-8 rounded-lg bg-slate-800/70 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/60"
+                        className="w-9 h-8 rounded-lg bg-slate-800/70 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/60 shadow-sm"
                         title="Aggiungi ad altra playlist"
                       >
-                        <Plus className="w-3.5 h-3.5" />
+                        <Plus className="w-4 h-4" />
                       </button>
                     )}
 
@@ -477,14 +480,14 @@ export default function PlaylistView({
                           e.stopPropagation();
                           onToggleLike(track);
                         }}
-                        className={`w-8 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border ${
+                        className={`w-9 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border shadow-sm ${
                           isLiked
                             ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
                             : 'bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/60'
                         }`}
                         title={isLiked ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
                       >
-                        <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-emerald-400' : ''}`} />
+                        <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-emerald-400 text-emerald-400' : ''}`} />
                       </button>
                     )}
 
@@ -497,7 +500,7 @@ export default function PlaylistView({
                           onRemoveTrackFromPlaylist(playlist.id, track);
                         }
                       }}
-                      className="w-8 h-8 rounded-lg bg-slate-800/70 hover:bg-rose-500/20 active:scale-90 flex items-center justify-center text-rose-400/90 hover:text-rose-400 transition-all border border-slate-700/60 hover:border-rose-500/40"
+                      className="w-9 h-8 rounded-lg bg-slate-800/70 hover:bg-rose-500/20 active:scale-90 flex items-center justify-center text-rose-400/90 hover:text-rose-400 transition-all border border-slate-700/60 hover:border-rose-500/40 shadow-sm"
                       title={isLikedView ? 'Rimuovi dai brani preferiti' : 'Rimuovi da questa playlist'}
                     >
                       <Trash2 className="w-3.5 h-3.5" />

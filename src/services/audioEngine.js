@@ -77,7 +77,14 @@ class AudioEngine {
         });
 
         MusicNotification.addListener('onNativeTrackChanged', (data) => {
-          if (data) {
+          if (data && data.title) {
+            this.currentTrack = {
+              title: data.title,
+              artist: data.artist,
+              cover: data.cover,
+              videoId: data.videoId,
+              id: data.videoId ? `yt_${data.videoId}` : `track_${Date.now()}`
+            };
             this.emit('nativetrackchange', data);
           }
         });
@@ -85,6 +92,32 @@ class AudioEngine {
         console.warn('Error setting up MusicNotification listeners:', err);
       }
     }
+  }
+
+  async getNativePlaybackState() {
+    if (Capacitor.isNativePlatform()) {
+      try {
+        const state = await MusicNotification.getPlaybackState();
+        if (state && state.hasActiveTrack && state.title) {
+          this.currentTrack = {
+            title: state.title,
+            artist: state.artist,
+            cover: state.cover,
+            videoId: state.videoId,
+            id: state.videoId ? `yt_${state.videoId}` : `track_${Date.now()}`,
+            duration: state.duration || 0
+          };
+          if (typeof state.isPlaying === 'boolean') {
+            this.isPlaying = state.isPlaying;
+          }
+        }
+        return state;
+      } catch (e) {
+        console.warn('getNativePlaybackState error:', e);
+        return null;
+      }
+    }
+    return null;
   }
 
   notifyNativePlayback(track, isPlaying) {

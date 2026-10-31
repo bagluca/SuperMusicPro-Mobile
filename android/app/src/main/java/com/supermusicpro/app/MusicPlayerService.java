@@ -246,15 +246,35 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
 
     public void syncWithUiNow() {
         mainHandler.post(() -> {
+            if (currentTitle != null && !currentTitle.isEmpty()) {
+                MusicNotificationPlugin.dispatchTrackChanged(
+                    currentTitle, 
+                    currentArtist != null ? currentArtist : "SuperMusic PRO", 
+                    currentCover != null ? currentCover : "", 
+                    currentVideoId != null ? currentVideoId : "", 
+                    nativeQueueIndex
+                );
+            }
             if (exoPlayer != null) {
                 long posMs = exoPlayer.getCurrentPosition();
                 long durMs = exoPlayer.getDuration();
                 long durSec = durMs > 0 ? durMs / 1000 : 180;
                 MusicNotificationPlugin.dispatchPlaybackProgress((double) posMs / 1000.0, durSec);
                 MusicNotificationPlugin.dispatchPlaybackState(exoPlayer.isPlaying());
+            } else {
+                MusicNotificationPlugin.dispatchPlaybackState(isPlaying);
             }
         });
     }
+
+    public String getCurrentTitle() { return currentTitle; }
+    public String getCurrentArtist() { return currentArtist; }
+    public String getCurrentCover() { return currentCover; }
+    public String getCurrentVideoId() { return currentVideoId; }
+    public boolean isPlayingState() { return isPlaying || (exoPlayer != null && exoPlayer.isPlaying()); }
+    public long getCurrentPositionMs() { return exoPlayer != null ? exoPlayer.getCurrentPosition() : 0; }
+    public long getDurationMs() { return exoPlayer != null ? exoPlayer.getDuration() : 0; }
+    public int getNativeQueueIndex() { return nativeQueueIndex; }
 
     public void pauseDirect() {
         mainHandler.post(() -> {
@@ -1370,7 +1390,20 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                         nativeQueue.add(item);
                     } catch (Exception ignored) {}
                 }
-                nativeQueueIndex = Math.max(0, Math.min(currentIndex, nativeQueue.size() - 1));
+                int matchingIndex = -1;
+                if (currentVideoId != null && !currentVideoId.isEmpty()) {
+                    for (int k = 0; k < nativeQueue.size(); k++) {
+                        if (currentVideoId.equals(nativeQueue.get(k).videoId)) {
+                            matchingIndex = k;
+                            break;
+                        }
+                    }
+                }
+                if (matchingIndex != -1) {
+                    nativeQueueIndex = matchingIndex;
+                } else if (!isPlaying) {
+                    nativeQueueIndex = Math.max(0, Math.min(currentIndex, nativeQueue.size() - 1));
+                }
             }
 
             if (favsArr != null) {

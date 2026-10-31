@@ -125,6 +125,11 @@ public class MainActivity extends BridgeActivity {
             MusicPlayerService svc = MusicPlayerService.getInstance();
             if (svc != null) {
                 svc.syncWithUiNow();
+                // Schedule delayed syncs to guarantee the WebView Javascript bridge is ready
+                new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
+                    MusicPlayerService s = MusicPlayerService.getInstance();
+                    if (s != null) s.syncWithUiNow();
+                }, 350);
             }
         } catch (Exception ignored) {}
     }

@@ -369,7 +369,14 @@ export default function SearchView({
               </div>
             ) : (
               <>
-                <div className="space-y-1.5">
+                {/* Visual Legend for Reference Dots */}
+                <div className="flex items-center space-x-4 px-2 py-1 mb-2 text-[10px] text-slate-400 select-none">
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-emerald-400 shadow-[0_0_6px_#10b981]"></span>Brano</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-purple-400 shadow-[0_0_6px_#c084fc]"></span>Artista</span>
+                  <span className="flex items-center gap-1.5"><span className="w-2 h-2 rounded-full bg-amber-400 shadow-[0_0_6px_#fbbf24]"></span>Album</span>
+                </div>
+
+                <div className="space-y-2">
                 {results.map((item, idx) => {
                   const isThisPlaying = Boolean(
                     isPlaying && currentTrack && (
@@ -388,112 +395,119 @@ export default function SearchView({
                     key={item.id || idx}
                     ref={isThisPlaying ? playingItemRef : null}
                     onClick={() => handleItemClick(item)}
-                    className={`track-item-perf flex items-center space-x-3 md:space-x-4 p-2.5 md:p-3 rounded-xl transition-all cursor-pointer group border ${
+                    className={`track-item-perf flex flex-col p-2.5 md:p-3 rounded-xl transition-all cursor-pointer group border ${
                       isThisPlaying
                         ? 'bg-emerald-500/20 border-emerald-500/70 text-emerald-400 shadow-[0_0_18px_rgba(16,185,129,0.3)] ring-1 ring-emerald-400/50'
-                        : 'bg-slate-900/40 hover:bg-slate-800/60 border-slate-800/60 text-slate-300'
+                        : 'bg-slate-900/50 hover:bg-slate-800/60 border-slate-800/60 text-slate-300'
                     }`}
                   >
-                    {/* Index or Live Playing Icon */}
-                    <div className="w-5 text-center shrink-0 flex items-center justify-center">
-                      {isThisPlaying ? (
-                        <Volume2 className="w-4 h-4 text-emerald-400 animate-pulse" />
-                      ) : (
-                        <span className="text-xs text-slate-500 font-mono">
-                          {idx + 1}
+                    {/* Top Row: Index, Artwork, Title & Artist, Duration */}
+                    <div className="flex items-center space-x-3 md:space-x-4 w-full min-w-0">
+                      {/* Index or Live Playing Icon */}
+                      <div className="w-5 text-center shrink-0 flex items-center justify-center">
+                        {isThisPlaying ? (
+                          <Volume2 className="w-4 h-4 text-emerald-400 animate-pulse" />
+                        ) : (
+                          <span className="text-xs text-slate-500 font-mono">
+                            {idx + 1}
+                          </span>
+                        )}
+                      </div>
+
+                      {/* Artwork with Standard Fallback on Error */}
+                      <div className="relative w-11 h-11 shrink-0">
+                        <img
+                          src={item.cover || DEFAULT_ALBUM_COVER}
+                          alt={item.title}
+                          loading="lazy"
+                          decoding="async"
+                          onError={(e) => {
+                            e.currentTarget.onerror = null;
+                            e.currentTarget.src = DEFAULT_ALBUM_COVER;
+                          }}
+                          className={`w-full h-full object-cover shadow-sm bg-slate-800 ${
+                            item.resultType === 'artist' ? 'rounded-full' : 'rounded-lg'
+                          }`}
+                        />
+                        <div className={`absolute inset-0 bg-slate-950/50 flex items-center justify-center transition-opacity ${
+                          item.resultType === 'artist' ? 'rounded-full' : 'rounded-lg'
+                        } ${
+                          isThisPlaying || isItemLoading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                        }`}>
+                          {isItemLoading ? (
+                            <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
+                          ) : (
+                            <Play className="w-4 h-4 fill-white text-white ml-0.5" />
+                          )}
+                        </div>
+                      </div>
+
+                      {/* Metadata & Reference Colored Dot */}
+                      <div className="flex-1 min-w-0 overflow-hidden">
+                        <div className="flex items-center gap-1.5 min-w-0">
+                          {/* Pallino colorato di riferimento: Verde per Brano, Viola per Artista, Arancione per Album */}
+                          {item.resultType === 'track' && (
+                            <span 
+                              className="w-2 h-2 rounded-full bg-emerald-400 shrink-0 shadow-[0_0_6px_#10b981]" 
+                              title="Brano" 
+                            />
+                          )}
+                          {item.resultType === 'artist' && (
+                            <span 
+                              className="w-2 h-2 rounded-full bg-purple-400 shrink-0 shadow-[0_0_6px_#c084fc]" 
+                              title="Artista" 
+                            />
+                          )}
+                          {item.resultType === 'album' && (
+                            <span 
+                              className="w-2 h-2 rounded-full bg-amber-400 shrink-0 shadow-[0_0_6px_#fbbf24]" 
+                              title="Album" 
+                            />
+                          )}
+
+                          <MarqueeText
+                            text={item.title}
+                            className={`font-semibold text-xs ${isThisPlaying ? 'text-emerald-400' : 'text-white'}`}
+                          />
+                        </div>
+
+                        <MarqueeText
+                          text={
+                            item.resultType === 'artist'
+                              ? 'Profilo Artista'
+                              : `${item.artist}${item.album && item.album !== 'Singolo' && item.album !== 'Album' ? ` • ${item.album}` : ''}`
+                          }
+                          className="text-[11px] text-slate-400 mt-0.5"
+                        />
+                      </div>
+
+                      {/* Formatted Duration */}
+                      {item.resultType === 'track' && (
+                        <span className="text-xs text-slate-400 font-mono shrink-0 font-medium px-1">
+                          {item.formattedDuration || formatDurationStr(item.duration)}
                         </span>
                       )}
                     </div>
 
-                    {/* Artwork with Standard Fallback on Error */}
-                    <div className="relative w-11 h-11 shrink-0">
-                      <img
-                        src={item.cover || DEFAULT_ALBUM_COVER}
-                        alt={item.title}
-                        loading="lazy"
-                        decoding="async"
-                        onError={(e) => {
-                          e.currentTarget.onerror = null;
-                          e.currentTarget.src = DEFAULT_ALBUM_COVER;
-                        }}
-                        className={`w-full h-full rounded-lg object-cover shadow-sm bg-slate-800 ${
-                          item.resultType === 'artist' ? 'rounded-full' : 'rounded-lg'
-                        }`}
-                      />
-                      <div className={`absolute inset-0 bg-slate-950/50 flex items-center justify-center transition-opacity ${
-                        item.resultType === 'artist' ? 'rounded-full' : 'rounded-lg'
-                      } ${
-                        isThisPlaying || isItemLoading ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                      }`}>
-                        {isItemLoading ? (
-                          <RefreshCw className="w-4 h-4 text-emerald-400 animate-spin" />
-                        ) : (
-                          <Play className="w-4 h-4 fill-white text-white ml-0.5" />
-                        )}
-                      </div>
-                    </div>
-
-                    {/* Metadata & Type Badge */}
-                    <div className="flex-1 min-w-0 overflow-hidden">
-                      <div className="flex items-center gap-1.5">
-                        <MarqueeText
-                          text={item.title}
-                          className={`font-semibold text-xs ${isThisPlaying ? 'text-emerald-400' : 'text-white'}`}
-                        />
-                        {/* Result Type Badge: Traccia, Artista, Album */}
-                        {item.resultType === 'artist' && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30 shrink-0">
-                            Artista
-                          </span>
-                        )}
-                        {item.resultType === 'album' && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-amber-500/20 text-amber-300 border border-amber-500/30 shrink-0">
-                            Album
-                          </span>
-                        )}
-                        {item.resultType === 'track' && (
-                          <span className="inline-flex items-center gap-0.5 px-1.5 py-0.2 rounded text-[9px] font-bold uppercase tracking-wider bg-emerald-500/15 text-emerald-400 border border-emerald-500/30 shrink-0">
-                            Brano
-                          </span>
-                        )}
-                      </div>
-
-                      <MarqueeText
-                        text={
-                          item.resultType === 'artist'
-                            ? 'Profilo Artista'
-                            : `${item.artist}${item.album && item.album !== 'Singolo' && item.album !== 'Album' ? ` • ${item.album}` : ''}`
-                        }
-                        className="text-[11px] text-slate-400 mt-0.5"
-                      />
-                    </div>
-
-                    {/* Formatted Duration (Always visible on mobile & desktop for tracks) */}
+                    {/* Tactile Action Buttons centered immediately below inside the card */}
                     {item.resultType === 'track' && (
-                      <span className="text-xs text-slate-400 font-mono shrink-0 font-medium px-1">
-                        {item.formattedDuration || formatDurationStr(item.duration)}
-                      </span>
-                    )}
-
-                    {/* Tactile Action Buttons (only for playable tracks) */}
-                    {item.resultType === 'track' && (
-                      <div className="flex items-center space-x-1 flex-shrink-0 z-10">
+                      <div className="flex items-center justify-center space-x-6 mt-2 pt-2 border-t border-slate-800/50 w-full z-10">
                         {onOpenAddToPlaylist && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               onOpenAddToPlaylist(item);
                             }}
-                            className="w-8 h-8 rounded-lg bg-slate-800/60 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/50"
+                            className="w-9 h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-300 hover:text-white transition-all border border-slate-700/60 shadow-sm"
                             title="Aggiungi a playlist"
                           >
-                            <Plus className="w-3.5 h-3.5" />
+                            <Plus className="w-4 h-4" />
                           </button>
                         )}
 
                         <button
                           onClick={(e) => handleDownload(item, e)}
-                          className="w-8 h-8 rounded-lg bg-slate-800/60 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-emerald-400 transition-all border border-slate-700/50"
+                          className="w-9 h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-300 hover:text-emerald-400 transition-all border border-slate-700/60 shadow-sm"
                           title="Scarica per ascolto offline"
                         >
                           {dlState === 'loading' ? (
@@ -510,14 +524,14 @@ export default function SearchView({
                             e.stopPropagation();
                             onToggleLike(item);
                           }}
-                          className={`w-8 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border ${
+                          className={`w-9 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border shadow-sm ${
                             likedSongsMap && likedSongsMap[item.id]
-                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
-                              : 'bg-slate-800/60 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/50'
+                              ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
+                              : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 border-slate-700/60'
                           }`}
                           title={likedSongsMap && likedSongsMap[item.id] ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
                         >
-                          <Heart className={`w-3.5 h-3.5 ${likedSongsMap && likedSongsMap[item.id] ? 'fill-emerald-400' : ''}`} />
+                          <Heart className={`w-3.5 h-3.5 ${likedSongsMap && likedSongsMap[item.id] ? 'fill-emerald-400 text-emerald-400' : ''}`} />
                         </button>
                       </div>
                     )}

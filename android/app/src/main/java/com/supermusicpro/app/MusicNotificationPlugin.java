@@ -45,6 +45,13 @@ public class MusicNotificationPlugin extends Plugin {
         return instance;
     }
 
+    public static void syncToCurrentPlayback() {
+        MusicPlayerService svc = MusicPlayerService.getInstance();
+        if (svc != null) {
+            svc.syncWithUiNow();
+        }
+    }
+
     private static boolean isBridgeReady() {
         if (instance == null) return false;
         Bridge bridge = instance.getBridge();
@@ -320,6 +327,51 @@ public class MusicNotificationPlugin extends Plugin {
             getActivity().moveTaskToBack(true);
         }
         call.resolve();
+    }
+
+    @PluginMethod
+    public void getPlaybackState(PluginCall call) {
+        MusicPlayerService svc = MusicPlayerService.getInstance();
+        JSObject ret = new JSObject();
+        if (svc != null && svc.getCurrentTitle() != null && !svc.getCurrentTitle().isEmpty()) {
+            ret.put("hasActiveTrack", true);
+            ret.put("title", svc.getCurrentTitle());
+            ret.put("artist", svc.getCurrentArtist() != null ? svc.getCurrentArtist() : "SuperMusic PRO");
+            ret.put("cover", svc.getCurrentCover() != null ? svc.getCurrentCover() : "");
+            ret.put("videoId", svc.getCurrentVideoId() != null ? svc.getCurrentVideoId() : "");
+            ret.put("isPlaying", svc.isPlayingState());
+            long posMs = svc.getCurrentPositionMs();
+            long durMs = svc.getDurationMs();
+            ret.put("currentTime", (double) posMs / 1000.0);
+            ret.put("duration", durMs > 0 ? (double) durMs / 1000.0 : 0);
+            ret.put("queueIndex", svc.getNativeQueueIndex());
+        } else {
+            try {
+                Context ctx = getContext();
+                if (ctx != null) {
+                    android.content.SharedPreferences prefs = ctx.getSharedPreferences("supermusic_native_prefs", Context.MODE_PRIVATE);
+                    String title = prefs.getString("last_track_title", null);
+                    if (title != null && !title.isEmpty()) {
+                        ret.put("hasActiveTrack", true);
+                        ret.put("title", title);
+                        ret.put("artist", prefs.getString("last_track_artist", "SuperMusic PRO"));
+                        ret.put("cover", prefs.getString("last_track_cover", ""));
+                        ret.put("videoId", prefs.getString("last_track_video_id", ""));
+                        ret.put("isPlaying", false);
+                        ret.put("currentTime", 0);
+                        ret.put("duration", 0);
+                        ret.put("queueIndex", 0);
+                    } else {
+                        ret.put("hasActiveTrack", false);
+                    }
+                } else {
+                    ret.put("hasActiveTrack", false);
+                }
+            } catch (Exception e) {
+                ret.put("hasActiveTrack", false);
+            }
+        }
+        call.resolve(ret);
     }
 
     @PluginMethod

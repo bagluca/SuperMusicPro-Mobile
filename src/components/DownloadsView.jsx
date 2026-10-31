@@ -206,56 +206,60 @@ export default function DownloadsView({
               <div
                 key={track.id || track.fileName || idx}
                 onClick={() => onPlayTrack(track, sortedDownloads, { type: 'local', title: 'Libreria Locale' })}
-                className={`flex items-center space-x-3 md:space-x-4 p-2.5 md:p-3 rounded-xl transition-all cursor-pointer group border ${
+                className={`flex flex-col p-2.5 md:p-3 rounded-xl transition-all cursor-pointer group border ${
                   isThisPlaying
                     ? 'bg-emerald-500/15 border-emerald-500/40 text-emerald-400'
                     : 'bg-slate-900/40 hover:bg-slate-800/60 border-slate-800/60 text-slate-300'
                 }`}
               >
-                <span className="text-xs text-slate-500 font-mono w-4 text-center shrink-0">
-                  {idx + 1}
-                </span>
+                {/* Upper row: Index, Artwork, Title & Artist (full width), file size */}
+                <div className="flex items-center space-x-3 md:space-x-4 w-full min-w-0">
+                  <span className="text-xs text-slate-500 font-mono w-4 text-center shrink-0">
+                    {idx + 1}
+                  </span>
 
-                <div className="relative w-11 h-11 shrink-0">
-                  <img
-                    src={track.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500'}
-                    alt={track.title}
-                    className="w-full h-full rounded-lg object-cover shadow-sm"
-                  />
-                  <div className={`absolute inset-0 bg-slate-950/50 rounded-lg flex items-center justify-center ${
-                    isThisPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
-                  }`}>
-                    <Play className="w-4 h-4 fill-white text-white ml-0.5" />
+                  <div className="relative w-11 h-11 shrink-0">
+                    <img
+                      src={track.cover || 'https://images.unsplash.com/photo-1511671782779-c97d3d27a1d4?w=500'}
+                      alt={track.title}
+                      className="w-full h-full rounded-lg object-cover shadow-sm"
+                    />
+                    <div className={`absolute inset-0 bg-slate-950/50 rounded-lg flex items-center justify-center ${
+                      isThisPlaying ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'
+                    }`}>
+                      <Play className="w-4 h-4 fill-white text-white ml-0.5" />
+                    </div>
+                  </div>
+
+                  <div className="flex-1 min-w-0 pr-2 overflow-hidden">
+                    <MarqueeText
+                      text={track.title}
+                      className={`font-semibold text-xs ${isThisPlaying ? 'text-emerald-400' : 'text-white'}`}
+                    />
+                    <MarqueeText
+                      text={track.artist}
+                      className="text-[11px] text-slate-400 mt-0.5"
+                    />
+                  </div>
+
+                  <div className="text-right hidden sm:block shrink-0">
+                    <div className="text-xs font-mono text-slate-400">{formatSize(track.fileSize)}</div>
+                    <div className="text-[10px] text-emerald-400 font-medium">Offline OK</div>
                   </div>
                 </div>
 
-                <div className="flex-1 min-w-0 pr-2 overflow-hidden">
-                  <MarqueeText
-                    text={track.title}
-                    className={`font-semibold text-xs ${isThisPlaying ? 'text-emerald-400' : 'text-white'}`}
-                  />
-                  <MarqueeText
-                    text={track.artist}
-                    className="text-[11px] text-slate-400 mt-0.5"
-                  />
-                </div>
-
-                <div className="text-right hidden sm:block shrink-0">
-                  <div className="text-xs font-mono text-slate-400">{formatSize(track.fileSize)}</div>
-                  <div className="text-[10px] text-emerald-400 font-medium">Offline OK</div>
-                </div>
-
-                <div className="flex items-center space-x-1 shrink-0 z-10">
+                {/* Actions centered immediately below in the card */}
+                <div className="flex items-center justify-center space-x-6 mt-2 pt-1.5 border-t border-slate-800/40 w-full z-10">
                   {onOpenAddToPlaylist && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onOpenAddToPlaylist(track);
                       }}
-                      className="w-8 h-8 rounded-lg bg-slate-800/60 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/50"
+                      className="w-9 h-8 rounded-lg bg-slate-800/70 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/60 shadow-sm"
                       title="Aggiungi a playlist"
                     >
-                      <Plus className="w-3.5 h-3.5" />
+                      <Plus className="w-4 h-4" />
                     </button>
                   )}
 
@@ -265,10 +269,10 @@ export default function DownloadsView({
                         e.stopPropagation();
                         onToggleLike(track);
                       }}
-                      className={`w-8 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border ${
+                      className={`w-9 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border shadow-sm ${
                         likedSongsMap[track.id]
                           ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                          : 'bg-slate-800/60 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/50'
+                          : 'bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/60'
                       }`}
                       title={likedSongsMap[track.id] ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
                     >
@@ -281,7 +285,7 @@ export default function DownloadsView({
                       e.stopPropagation();
                       handleDelete(track, idx);
                     }}
-                    className="w-8 h-8 rounded-lg bg-slate-800/60 hover:bg-rose-950/40 active:scale-90 flex items-center justify-center text-slate-400 hover:text-rose-400 transition-all border border-slate-700/50"
+                    className="w-9 h-8 rounded-lg bg-slate-800/70 hover:bg-rose-950/40 active:scale-90 flex items-center justify-center text-slate-400 hover:text-rose-400 transition-all border border-slate-700/60 shadow-sm"
                     title="Elimina dalla libreria locale"
                   >
                     <Trash2 className="w-3.5 h-3.5" />
