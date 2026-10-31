@@ -127,30 +127,29 @@ public class MainActivity extends BridgeActivity {
                 svc.syncWithUiNow();
                 // Schedule delayed syncs to guarantee the WebView Javascript bridge is ready
                 new android.os.Handler(android.os.Looper.getMainLooper()).postDelayed(() -> {
-                    MusicPlayerService s = MusicPlayerService.getInstance();
-                    if (s != null) s.syncWithUiNow();
-                }, 350);
+                    try {
+                        MusicPlayerService s = MusicPlayerService.getInstance();
+                        if (s != null) s.syncWithUiNow();
+                    } catch (Throwable ignored) {}
+                }, 500);
             }
-        } catch (Exception ignored) {}
+        } catch (Throwable ignored) {}
     }
 
     @Override
     @SuppressWarnings("deprecation")
     public void onBackPressed() {
-        if (MusicNotificationPlugin.dispatchMediaAction("back_button")) {
-            return;
-        }
+        try {
+            if (MusicNotificationPlugin.dispatchMediaAction("back_button")) {
+                return;
+            }
+        } catch (Throwable ignored) {}
         moveTaskToBack(true);
     }
 
     @Override
     public void onDestroy() {
-        try {
-            Intent stopIntent = new Intent(this, MusicPlayerService.class);
-            stopIntent.setAction(MusicPlayerService.ACTION_STOP);
-            startService(stopIntent);
-            stopService(stopIntent);
-        } catch (Exception ignored) {}
+        isActivityResumed = false;
         super.onDestroy();
     }
 }

@@ -54,58 +54,83 @@ public class MusicNotificationPlugin extends Plugin {
 
     private static boolean isBridgeReady() {
         if (instance == null) return false;
-        Bridge bridge = instance.getBridge();
-        if (bridge == null || bridge.getWebView() == null) return false;
-        if (instance.getActivity() != null && (instance.getActivity().isDestroyed() || instance.getActivity().isFinishing())) {
+        try {
+            if (instance.getActivity() == null) return false;
+            if (instance.getActivity().isDestroyed() || instance.getActivity().isFinishing()) {
+                return false;
+            }
+            Bridge bridge = instance.getBridge();
+            if (bridge == null || bridge.getWebView() == null) return false;
+            return true;
+        } catch (Throwable t) {
             return false;
         }
-        return true;
     }
 
     public static boolean dispatchMediaAction(String action) {
-        if (isBridgeReady()) {
-            JSObject data = new JSObject();
-            data.put("action", action);
-            instance.notifyListeners("onMediaAction", data);
-            return true;
+        try {
+            if (isBridgeReady()) {
+                JSObject data = new JSObject();
+                data.put("action", action);
+                instance.notifyListeners("onMediaAction", data);
+                return true;
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("MusicNotification", "Error in dispatchMediaAction", t);
         }
         return false;
     }
 
     public static void dispatchPlaybackProgress(double currentTime, long duration) {
-        if (isBridgeReady()) {
-            JSObject data = new JSObject();
-            data.put("currentTime", currentTime);
-            data.put("duration", duration);
-            instance.notifyListeners("onPlaybackProgress", data);
+        try {
+            if (isBridgeReady()) {
+                JSObject data = new JSObject();
+                data.put("currentTime", currentTime);
+                data.put("duration", duration);
+                instance.notifyListeners("onPlaybackProgress", data);
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("MusicNotification", "Error in dispatchPlaybackProgress", t);
         }
     }
 
     public static void dispatchPlaybackState(boolean isPlaying) {
-        if (isBridgeReady()) {
-            JSObject data = new JSObject();
-            data.put("isPlaying", isPlaying);
-            instance.notifyListeners("onPlaybackState", data);
+        try {
+            if (isBridgeReady()) {
+                JSObject data = new JSObject();
+                data.put("isPlaying", isPlaying);
+                instance.notifyListeners("onPlaybackState", data);
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("MusicNotification", "Error in dispatchPlaybackState", t);
         }
     }
 
     public static void dispatchPlaybackError(String error) {
-        if (isBridgeReady()) {
-            JSObject data = new JSObject();
-            data.put("error", error);
-            instance.notifyListeners("onPlaybackError", data);
+        try {
+            if (isBridgeReady()) {
+                JSObject data = new JSObject();
+                data.put("error", error);
+                instance.notifyListeners("onPlaybackError", data);
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("MusicNotification", "Error in dispatchPlaybackError", t);
         }
     }
 
     public static void dispatchTrackChanged(String title, String artist, String cover, String videoId, int queueIndex) {
-        if (isBridgeReady()) {
-            JSObject data = new JSObject();
-            data.put("title", title);
-            data.put("artist", artist);
-            data.put("cover", cover);
-            data.put("videoId", videoId);
-            data.put("queueIndex", queueIndex);
-            instance.notifyListeners("onNativeTrackChanged", data);
+        try {
+            if (isBridgeReady()) {
+                JSObject data = new JSObject();
+                data.put("title", title);
+                data.put("artist", artist);
+                data.put("cover", cover);
+                data.put("videoId", videoId);
+                data.put("queueIndex", queueIndex);
+                instance.notifyListeners("onNativeTrackChanged", data);
+            }
+        } catch (Throwable t) {
+            android.util.Log.w("MusicNotification", "Error in dispatchTrackChanged", t);
         }
     }
 
@@ -331,46 +356,47 @@ public class MusicNotificationPlugin extends Plugin {
 
     @PluginMethod
     public void getPlaybackState(PluginCall call) {
-        MusicPlayerService svc = MusicPlayerService.getInstance();
         JSObject ret = new JSObject();
-        if (svc != null && svc.getCurrentTitle() != null && !svc.getCurrentTitle().isEmpty()) {
-            ret.put("hasActiveTrack", true);
-            ret.put("title", svc.getCurrentTitle());
-            ret.put("artist", svc.getCurrentArtist() != null ? svc.getCurrentArtist() : "SuperMusic PRO");
-            ret.put("cover", svc.getCurrentCover() != null ? svc.getCurrentCover() : "");
-            ret.put("videoId", svc.getCurrentVideoId() != null ? svc.getCurrentVideoId() : "");
-            ret.put("isPlaying", svc.isPlayingState());
-            long posMs = svc.getCurrentPositionMs();
-            long durMs = svc.getDurationMs();
-            ret.put("currentTime", (double) posMs / 1000.0);
-            ret.put("duration", durMs > 0 ? (double) durMs / 1000.0 : 0);
-            ret.put("queueIndex", svc.getNativeQueueIndex());
-        } else {
-            try {
-                Context ctx = getContext();
-                if (ctx != null) {
-                    android.content.SharedPreferences prefs = ctx.getSharedPreferences("supermusic_native_prefs", Context.MODE_PRIVATE);
-                    String title = prefs.getString("last_track_title", null);
-                    if (title != null && !title.isEmpty()) {
-                        ret.put("hasActiveTrack", true);
-                        ret.put("title", title);
-                        ret.put("artist", prefs.getString("last_track_artist", "SuperMusic PRO"));
-                        ret.put("cover", prefs.getString("last_track_cover", ""));
-                        ret.put("videoId", prefs.getString("last_track_video_id", ""));
-                        ret.put("isPlaying", false);
-                        ret.put("currentTime", 0);
-                        ret.put("duration", 0);
-                        ret.put("queueIndex", 0);
-                    } else {
-                        ret.put("hasActiveTrack", false);
-                    }
-                } else {
-                    ret.put("hasActiveTrack", false);
-                }
-            } catch (Exception e) {
-                ret.put("hasActiveTrack", false);
+        try {
+            MusicPlayerService svc = MusicPlayerService.getInstance();
+            if (svc != null && svc.getCurrentTitle() != null && !svc.getCurrentTitle().isEmpty()) {
+                ret.put("hasActiveTrack", true);
+                ret.put("title", svc.getCurrentTitle());
+                ret.put("artist", svc.getCurrentArtist() != null ? svc.getCurrentArtist() : "SuperMusic PRO");
+                ret.put("cover", svc.getCurrentCover() != null ? svc.getCurrentCover() : "");
+                ret.put("videoId", svc.getCurrentVideoId() != null ? svc.getCurrentVideoId() : "");
+                ret.put("isPlaying", svc.isPlayingState());
+                long posMs = svc.getCurrentPositionMs();
+                long durMs = svc.getDurationMs();
+                ret.put("currentTime", (double) posMs / 1000.0);
+                ret.put("duration", durMs > 0 ? (double) durMs / 1000.0 : 0);
+                ret.put("queueIndex", svc.getNativeQueueIndex());
+                call.resolve(ret);
+                return;
             }
+
+            Context ctx = getContext();
+            if (ctx != null) {
+                android.content.SharedPreferences prefs = ctx.getSharedPreferences("supermusic_native_prefs", Context.MODE_PRIVATE);
+                String title = prefs.getString("last_track_title", null);
+                if (title != null && !title.isEmpty()) {
+                    ret.put("hasActiveTrack", true);
+                    ret.put("title", title);
+                    ret.put("artist", prefs.getString("last_track_artist", "SuperMusic PRO"));
+                    ret.put("cover", prefs.getString("last_track_cover", ""));
+                    ret.put("videoId", prefs.getString("last_track_video_id", ""));
+                    ret.put("isPlaying", false);
+                    ret.put("currentTime", 0);
+                    ret.put("duration", 0);
+                    ret.put("queueIndex", 0);
+                    call.resolve(ret);
+                    return;
+                }
+            }
+        } catch (Throwable t) {
+            android.util.Log.e("MusicNotification", "Error getting playback state", t);
         }
+        ret.put("hasActiveTrack", false);
         call.resolve(ret);
     }
 

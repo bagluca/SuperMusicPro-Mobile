@@ -165,7 +165,9 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     private volatile long currentRangeChunkBytes = 512L * 1024L;
     private volatile String cachedVisitorData = null;
     private boolean hasRetriedNatively = false;
-    private boolean isPlaying = false;
+    private volatile boolean isPlaying = false;
+    private volatile long cachedCurrentPositionMs = 0;
+    private volatile long cachedDurationMs = 0;
     private boolean isInForeground = false;
     private Bitmap cachedCoverBitmap = null;
     private String cachedCoverUrl = null;
@@ -176,22 +178,29 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     private final Runnable progressRunnable = new Runnable() {
         @Override
         public void run() {
-            if (exoPlayer != null && exoPlayer.isPlaying()) {
-                long posMs = exoPlayer.getCurrentPosition();
-                long durMs = exoPlayer.getDuration();
-                long durSec = durMs > 0 ? durMs / 1000 : 180;
+            try {
+                if (exoPlayer != null && exoPlayer.isPlaying()) {
+                    long posMs = exoPlayer.getCurrentPosition();
+                    long durMs = exoPlayer.getDuration();
+                    long durSec = durMs > 0 ? durMs / 1000 : 180;
+                    cachedCurrentPositionMs = posMs;
+                    cachedDurationMs = durMs;
+                    isPlaying = true;
 
-                if (MainActivity.isActivityResumed) {
-                    MusicNotificationPlugin.dispatchPlaybackProgress((double) posMs / 1000.0, durSec);
-                }
+                    if (MainActivity.isActivityResumed) {
+                        MusicNotificationPlugin.dispatchPlaybackProgress((double) posMs / 1000.0, durSec);
+                    }
 
-                // Sync MediaSession position with real ExoPlayer timestamp periodically (every 2.5s)
-                // This guarantees Android Auto's progress bar never drifts and stays 100% in sync with audio!
-                long now = android.os.SystemClock.elapsedRealtime();
-                if (now - lastMediaSessionSyncMs >= 2500) {
-                    lastMediaSessionSyncMs = now;
-                    syncMediaSessionPosition(posMs);
+                    // Sync MediaSession position with real ExoPlayer timestamp periodically (every 2.5s)
+                    // This guarantees Android Auto's progress bar never drifts and stays 100% in sync with audio!
+                    long now = android.os.SystemClock.elapsedRealtime();
+                    if (now - lastMediaSessionSyncMs >= 2500) {
+                        lastMediaSessionSyncMs = now;
+                        syncMediaSessionPosition(posMs);
+                    }
                 }
+            } catch (Throwable t) {
+                Log.w(TAG, "Error in progressRunnable", t);
             }
             progressHandler.postDelayed(this, 350);
         }
@@ -246,23 +255,30 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
 
     public void syncWithUiNow() {
         mainHandler.post(() -> {
-            if (currentTitle != null && !currentTitle.isEmpty()) {
-                MusicNotificationPlugin.dispatchTrackChanged(
-                    currentTitle, 
-                    currentArtist != null ? currentArtist : "SuperMusic PRO", 
-                    currentCover != null ? currentCover : "", 
-                    currentVideoId != null ? currentVideoId : "", 
-                    nativeQueueIndex
-                );
-            }
-            if (exoPlayer != null) {
-                long posMs = exoPlayer.getCurrentPosition();
-                long durMs = exoPlayer.getDuration();
-                long durSec = durMs > 0 ? durMs / 1000 : 180;
-                MusicNotificationPlugin.dispatchPlaybackProgress((double) posMs / 1000.0, durSec);
-                MusicNotificationPlugin.dispatchPlaybackState(exoPlayer.isPlaying());
-            } else {
-                MusicNotificationPlugin.dispatchPlaybackState(isPlaying);
+            try {
+                if (currentTitle != null && !currentTitle.isEmpty()) {
+                    MusicNotificationPlugin.dispatchTrackChanged(
+                        currentTitle, 
+                        currentArtist != null ? currentArtist : "SuperMusic PRO", 
+                        currentCover != null ? currentCover : "", 
+                        currentVideoId != null ? currentVideoId : "", 
+                        nativeQueueIndex
+                    );
+                }
+                if (exoPlayer != null) {
+                    long posMs = exoPlayer.getCurrentPosition();
+                    long durMs = exoPlayer.getDuration();
+                    cachedCurrentPositionMs = posMs;
+                    cachedDurationMs = durMs;
+                    isPlaying = exoPlayer.isPlaying();
+                    long durSec = durMs > 0 ? durMs / 1000 : 180;
+                    MusicNotificationPlugin.dispatchPlaybackProgress((double) posMs / 1000.0, durSec);
+                    MusicNotificationPlugin.dispatchPlaybackState(isPlaying);
+                } else {
+                    MusicNotificationPlugin.dispatchPlaybackState(isPlaying);
+                }
+            } catch (Throwable t) {
+                Log.w(TAG, "Error in syncWithUiNow", t);
             }
         });
     }
@@ -271,9 +287,9 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     public String getCurrentArtist() { return currentArtist; }
     public String getCurrentCover() { return currentCover; }
     public String getCurrentVideoId() { return currentVideoId; }
-    public boolean isPlayingState() { return isPlaying || (exoPlayer != null && exoPlayer.isPlaying()); }
-    public long getCurrentPositionMs() { return exoPlayer != null ? exoPlayer.getCurrentPosition() : 0; }
-    public long getDurationMs() { return exoPlayer != null ? exoPlayer.getDuration() : 0; }
+    public boolean isPlayingState() { return isPlaying; }
+    public long getCurrentPositionMs() { return cachedCurrentPositionMs; }
+    public long getDurationMs() { return cachedDurationMs; }
     public int getNativeQueueIndex() { return nativeQueueIndex; }
 
     public void pauseDirect() {
@@ -456,6 +472,12 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                 @Override
                 public void onIsPlayingChanged(boolean isPlayingNow) {
                     isPlaying = isPlayingNow;
+                    if (exoPlayer != null) {
+                        try {
+                            cachedCurrentPositionMs = exoPlayer.getCurrentPosition();
+                            cachedDurationMs = exoPlayer.getDuration();
+                        } catch (Exception ignored) {}
+                    }
                     if (isPlayingNow) {
                         try {
                             if (wakeLock != null && !wakeLock.isHeld()) wakeLock.acquire(12 * 60 * 60 * 1000L);
@@ -475,8 +497,14 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                 @Override
                 public void onPlaybackStateChanged(int playbackState) {
                     Log.d(TAG, "ExoPlayer onPlaybackStateChanged: " + playbackState);
+                    if (exoPlayer != null) {
+                        try {
+                            cachedCurrentPositionMs = exoPlayer.getCurrentPosition();
+                            cachedDurationMs = exoPlayer.getDuration();
+                        } catch (Exception ignored) {}
+                    }
                     if (playbackState == Player.STATE_READY) {
-                        Log.d(TAG, "ExoPlayer is READY, duration=" + exoPlayer.getDuration());
+                        Log.d(TAG, "ExoPlayer is READY, duration=" + (exoPlayer != null ? exoPlayer.getDuration() : 0));
                         updateMediaSessionState();
                         startForegroundWithNotification();
                     } else if (playbackState == Player.STATE_ENDED) {
@@ -1371,47 +1399,13 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     }
 
     public void syncFromApp(JSArray queueArr, int currentIndex, JSArray favsArr, JSArray playlistsArr, JSArray catalogArr) {
-        synchronized (nativeQueue) {
-            if (queueArr != null) {
-                nativeQueue.clear();
-                for (int i = 0; i < queueArr.length(); i++) {
-                    try {
-                        org.json.JSONObject obj = queueArr.getJSONObject(i);
-                        NativeTrackItem item = new NativeTrackItem();
-                        item.title = obj.optString("title", "SuperMusic PRO");
-                        item.artist = obj.optString("artist", "Artista");
-                        item.cover = obj.optString("cover", "");
-                        item.videoId = obj.optString("videoId", "");
-                        if (item.videoId.isEmpty() && obj.has("id")) {
-                            String sid = obj.optString("id", "");
-                            if (sid.startsWith("yt_")) item.videoId = sid.substring(3);
-                        }
-                        item.url = obj.optString("localAudioUrl", obj.optString("url", ""));
-                        nativeQueue.add(item);
-                    } catch (Exception ignored) {}
-                }
-                int matchingIndex = -1;
-                if (currentVideoId != null && !currentVideoId.isEmpty()) {
-                    for (int k = 0; k < nativeQueue.size(); k++) {
-                        if (currentVideoId.equals(nativeQueue.get(k).videoId)) {
-                            matchingIndex = k;
-                            break;
-                        }
-                    }
-                }
-                if (matchingIndex != -1) {
-                    nativeQueueIndex = matchingIndex;
-                } else if (!isPlaying) {
-                    nativeQueueIndex = Math.max(0, Math.min(currentIndex, nativeQueue.size() - 1));
-                }
-            }
-
-            if (favsArr != null) {
-                synchronized (nativeFavorites) {
-                    nativeFavorites.clear();
-                    for (int i = 0; i < favsArr.length(); i++) {
+        try {
+            synchronized (nativeQueue) {
+                if (queueArr != null) {
+                    nativeQueue.clear();
+                    for (int i = 0; i < queueArr.length(); i++) {
                         try {
-                            org.json.JSONObject obj = favsArr.getJSONObject(i);
+                            org.json.JSONObject obj = queueArr.getJSONObject(i);
                             NativeTrackItem item = new NativeTrackItem();
                             item.title = obj.optString("title", "SuperMusic PRO");
                             item.artist = obj.optString("artist", "Artista");
@@ -1422,97 +1416,139 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
                                 if (sid.startsWith("yt_")) item.videoId = sid.substring(3);
                             }
                             item.url = obj.optString("localAudioUrl", obj.optString("url", ""));
-                            nativeFavorites.add(item);
+                            nativeQueue.add(item);
                         } catch (Exception ignored) {}
                     }
-                }
-            }
-
-            if (playlistsArr != null) {
-                synchronized (nativePlaylists) {
-                    nativePlaylists.clear();
-                    for (int i = 0; i < playlistsArr.length(); i++) {
-                        try {
-                            org.json.JSONObject obj = playlistsArr.getJSONObject(i);
-                            NativePlaylistItem pl = new NativePlaylistItem();
-                            pl.id = obj.optString("id", "pl_" + i);
-                            pl.name = obj.optString("name", "Playlist " + (i + 1));
-                            pl.cover = obj.optString("cover", "");
-                            org.json.JSONArray songs = obj.optJSONArray("songs");
-                            if (songs != null) {
-                                for (int s = 0; s < songs.length(); s++) {
-                                    org.json.JSONObject sobj = songs.getJSONObject(s);
-                                    NativeTrackItem sitem = new NativeTrackItem();
-                                    sitem.title = sobj.optString("title", "SuperMusic PRO");
-                                    sitem.artist = sobj.optString("artist", "Artista");
-                                    sitem.cover = sobj.optString("cover", "");
-                                    sitem.videoId = sobj.optString("videoId", "");
-                                    if (sitem.videoId.isEmpty() && sobj.has("id")) {
-                                        String sid = sobj.optString("id", "");
-                                        if (sid.startsWith("yt_")) sitem.videoId = sid.substring(3);
-                                    }
-                                    sitem.url = sobj.optString("localAudioUrl", sobj.optString("url", ""));
-                                    pl.tracks.add(sitem);
-                                }
+                    int matchingIndex = -1;
+                    if (currentVideoId != null && !currentVideoId.isEmpty()) {
+                        for (int k = 0; k < nativeQueue.size(); k++) {
+                            if (currentVideoId.equals(nativeQueue.get(k).videoId)) {
+                                matchingIndex = k;
+                                break;
                             }
-                            nativePlaylists.add(pl);
-                        } catch (Exception ignored) {}
+                        }
+                    }
+                    if (matchingIndex != -1) {
+                        nativeQueueIndex = matchingIndex;
+                    } else if (!isPlaying) {
+                        nativeQueueIndex = Math.max(0, Math.min(currentIndex, nativeQueue.size() - 1));
                     }
                 }
-            }
 
-            saveFavoritesAndPlaylistsToStorage(
-                    favsArr != null ? favsArr.toString() : null,
-                    playlistsArr != null ? playlistsArr.toString() : null
-            );
+                if (favsArr != null) {
+                    synchronized (nativeFavorites) {
+                        nativeFavorites.clear();
+                        for (int i = 0; i < favsArr.length(); i++) {
+                            try {
+                                org.json.JSONObject obj = favsArr.getJSONObject(i);
+                                NativeTrackItem item = new NativeTrackItem();
+                                item.title = obj.optString("title", "SuperMusic PRO");
+                                item.artist = obj.optString("artist", "Artista");
+                                item.cover = obj.optString("cover", "");
+                                item.videoId = obj.optString("videoId", "");
+                                if (item.videoId.isEmpty() && obj.has("id")) {
+                                    String sid = obj.optString("id", "");
+                                    if (sid.startsWith("yt_")) item.videoId = sid.substring(3);
+                                }
+                                item.url = obj.optString("localAudioUrl", obj.optString("url", ""));
+                                nativeFavorites.add(item);
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
 
-            if (catalogArr != null && catalogArr.length() > 0) {
-                synchronized (nativeTrending) {
-                    synchronized (nativeNewReleases) {
-                        synchronized (nativeCatalog) {
-                            nativeTrending.clear();
-                            nativeNewReleases.clear();
-                            nativeCatalog.clear();
-                            for (int i = 0; i < catalogArr.length(); i++) {
-                                try {
-                                    org.json.JSONObject obj = catalogArr.getJSONObject(i);
-                                    NativeTrackItem item = new NativeTrackItem();
-                                    item.title = obj.optString("title", "SuperMusic PRO");
-                                    item.artist = obj.optString("artist", "Artista");
-                                    item.cover = obj.optString("cover", "");
-                                    item.videoId = obj.optString("videoId", "");
-                                    if (item.videoId.isEmpty() && obj.has("id")) {
-                                        String sid = obj.optString("id", "");
-                                        if (sid.startsWith("yt_")) item.videoId = sid.substring(3);
+                if (playlistsArr != null) {
+                    synchronized (nativePlaylists) {
+                        nativePlaylists.clear();
+                        for (int i = 0; i < playlistsArr.length(); i++) {
+                            try {
+                                org.json.JSONObject obj = playlistsArr.getJSONObject(i);
+                                NativePlaylistItem pl = new NativePlaylistItem();
+                                pl.id = obj.optString("id", "pl_" + i);
+                                pl.name = obj.optString("name", "Playlist " + (i + 1));
+                                pl.cover = obj.optString("cover", "");
+                                org.json.JSONArray songs = obj.optJSONArray("songs");
+                                if (songs != null) {
+                                    for (int s = 0; s < songs.length(); s++) {
+                                        org.json.JSONObject sobj = songs.getJSONObject(s);
+                                        NativeTrackItem sitem = new NativeTrackItem();
+                                        sitem.title = sobj.optString("title", "SuperMusic PRO");
+                                        sitem.artist = sobj.optString("artist", "Artista");
+                                        sitem.cover = sobj.optString("cover", "");
+                                        sitem.videoId = sobj.optString("videoId", "");
+                                        if (sitem.videoId.isEmpty() && sobj.has("id")) {
+                                            String sid = sobj.optString("id", "");
+                                            if (sid.startsWith("yt_")) sitem.videoId = sid.substring(3);
+                                        }
+                                        sitem.url = sobj.optString("localAudioUrl", sobj.optString("url", ""));
+                                        pl.tracks.add(sitem);
                                     }
-                                    nativeCatalog.add(item);
-                                    if (i < 10) {
-                                        nativeTrending.add(item);
-                                    } else if (i < 20) {
-                                        nativeNewReleases.add(item);
-                                    }
-                                } catch (Exception ignored) {}
+                                }
+                                nativePlaylists.add(pl);
+                            } catch (Exception ignored) {}
+                        }
+                    }
+                }
+
+                saveFavoritesAndPlaylistsToStorage(
+                        favsArr != null ? favsArr.toString() : null,
+                        playlistsArr != null ? playlistsArr.toString() : null
+                );
+
+                if (catalogArr != null && catalogArr.length() > 0) {
+                    synchronized (nativeTrending) {
+                        synchronized (nativeNewReleases) {
+                            synchronized (nativeCatalog) {
+                                nativeTrending.clear();
+                                nativeNewReleases.clear();
+                                nativeCatalog.clear();
+                                for (int i = 0; i < catalogArr.length(); i++) {
+                                    try {
+                                        org.json.JSONObject obj = catalogArr.getJSONObject(i);
+                                        NativeTrackItem item = new NativeTrackItem();
+                                        item.title = obj.optString("title", "SuperMusic PRO");
+                                        item.artist = obj.optString("artist", "Artista");
+                                        item.cover = obj.optString("cover", "");
+                                        item.videoId = obj.optString("videoId", "");
+                                        if (item.videoId.isEmpty() && obj.has("id")) {
+                                            String sid = obj.optString("id", "");
+                                            if (sid.startsWith("yt_")) item.videoId = sid.substring(3);
+                                        }
+                                        nativeCatalog.add(item);
+                                        if (i < 10) {
+                                            nativeTrending.add(item);
+                                        } else if (i < 20) {
+                                            nativeNewReleases.add(item);
+                                        }
+                                    } catch (Exception ignored) {}
+                                }
                             }
                         }
                     }
                 }
             }
-        }
 
-        mainHandler.post(() -> {
-            notifyChildrenChanged(MEDIA_ROOT_ID);
-            notifyChildrenChanged(TAB_ALL);
-            notifyChildrenChanged(TAB_MUSIC);
-            notifyChildrenChanged(TAB_TRENDING);
-            notifyChildrenChanged(TAB_FAVORITES);
-            notifyChildrenChanged(MEDIA_ID_QUEUE);
-            notifyChildrenChanged(MEDIA_ID_FAVORITES);
-            notifyChildrenChanged(MEDIA_ID_PLAYLISTS);
-            notifyChildrenChanged(MEDIA_ID_TRENDING);
-            notifyChildrenChanged(MEDIA_ID_NEW_RELEASES);
-            notifyChildrenChanged(MEDIA_ID_MOST_PLAYED);
-            notifyChildrenChanged(MEDIA_ID_DAILY_MIX);
-        });
+            mainHandler.post(() -> {
+                try {
+                    notifyChildrenChanged(MEDIA_ROOT_ID);
+                    notifyChildrenChanged(TAB_ALL);
+                    notifyChildrenChanged(TAB_MUSIC);
+                    notifyChildrenChanged(TAB_TRENDING);
+                    notifyChildrenChanged(TAB_FAVORITES);
+                    notifyChildrenChanged(MEDIA_ID_QUEUE);
+                    notifyChildrenChanged(MEDIA_ID_FAVORITES);
+                    notifyChildrenChanged(MEDIA_ID_PLAYLISTS);
+                    notifyChildrenChanged(MEDIA_ID_TRENDING);
+                    notifyChildrenChanged(MEDIA_ID_NEW_RELEASES);
+                    notifyChildrenChanged(MEDIA_ID_MOST_PLAYED);
+                    notifyChildrenChanged(MEDIA_ID_DAILY_MIX);
+                } catch (Throwable t) {
+                    Log.w(TAG, "Error notifying children changed", t);
+                }
+            });
+        } catch (Throwable t) {
+            Log.e(TAG, "Error in syncFromApp", t);
+        }
     }
 
     private int findTrackIndexInList(List<NativeTrackItem> list, String videoId, String title) {
@@ -2447,8 +2483,8 @@ public class MusicPlayerService extends MediaBrowserServiceCompat {
     public BrowserRoot onGetRoot(@NonNull String clientPackageName, int clientUid, @Nullable Bundle rootHints) {
         Log.d(TAG, "Android Auto onGetRoot for client: " + clientPackageName);
 
-        boolean hasActiveTrack = isPlaying || (exoPlayer != null && exoPlayer.getPlaybackState() != Player.STATE_IDLE && exoPlayer.getPlaybackState() != Player.STATE_ENDED);
-        if (!hasActiveTrack && (currentVideoId == null || currentVideoId.isEmpty()) && mediaSession != null) {
+        boolean hasActiveTrack = isPlaying || (currentVideoId != null && !currentVideoId.isEmpty());
+        if (!hasActiveTrack && mediaSession != null) {
             long initialActions = PlaybackStateCompat.ACTION_PLAY |
                     PlaybackStateCompat.ACTION_PLAY_FROM_MEDIA_ID |
                     PlaybackStateCompat.ACTION_PLAY_FROM_SEARCH |
