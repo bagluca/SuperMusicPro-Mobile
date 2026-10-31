@@ -484,38 +484,40 @@ export default function SearchView({
                       {/* Formatted Duration */}
                       {item.resultType === 'track' && (
                         <span className="text-xs text-slate-400 font-mono shrink-0 font-medium px-1">
-                          {item.formattedDuration || formatDurationStr(item.duration)}
+                          {isThisPlaying && currentTrack?.duration
+                            ? formatDurationStr(currentTrack.duration)
+                            : (item.formattedDuration || (item.duration ? formatDurationStr(item.duration) : ''))}
                         </span>
                       )}
                     </div>
 
-                    {/* Tactile Action Buttons centered immediately below inside the card */}
+                    {/* Compact Tactile Action Buttons centered immediately below inside the card */}
                     {item.resultType === 'track' && (
-                      <div className="flex items-center justify-center space-x-6 mt-2 pt-2 border-t border-slate-800/50 w-full z-10">
+                      <div className="flex items-center justify-center space-x-4 mt-1.5 pt-1.5 border-t border-slate-800/40 w-full z-10">
                         {onOpenAddToPlaylist && (
                           <button
                             onClick={(e) => {
                               e.stopPropagation();
                               onOpenAddToPlaylist(item);
                             }}
-                            className="w-9 h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-300 hover:text-white transition-all border border-slate-700/60 shadow-sm"
+                            className="w-7 h-7 rounded-md bg-slate-800/80 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/50 shadow-sm"
                             title="Aggiungi a playlist"
                           >
-                            <Plus className="w-4 h-4" />
+                            <Plus className="w-3.5 h-3.5" />
                           </button>
                         )}
 
                         <button
                           onClick={(e) => handleDownload(item, e)}
-                          className="w-9 h-8 rounded-lg bg-slate-800/80 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-300 hover:text-emerald-400 transition-all border border-slate-700/60 shadow-sm"
+                          className="w-7 h-7 rounded-md bg-slate-800/80 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-emerald-400 transition-all border border-slate-700/50 shadow-sm"
                           title="Scarica per ascolto offline"
                         >
                           {dlState === 'loading' ? (
-                            <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                            <RefreshCw className="w-3 h-3 text-emerald-400 animate-spin" />
                           ) : dlState === 'done' ? (
-                            <Check className="w-3.5 h-3.5 text-emerald-400" />
+                            <Check className="w-3 h-3 text-emerald-400" />
                           ) : (
-                            <Download className="w-3.5 h-3.5" />
+                            <Download className="w-3 h-3" />
                           )}
                         </button>
 
@@ -524,14 +526,14 @@ export default function SearchView({
                             e.stopPropagation();
                             onToggleLike(item);
                           }}
-                          className={`w-9 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border shadow-sm ${
+                          className={`w-7 h-7 rounded-md active:scale-90 flex items-center justify-center transition-all border shadow-sm ${
                             likedSongsMap && likedSongsMap[item.id]
                               ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/50 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
-                              : 'bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-emerald-400 border-slate-700/60'
+                              : 'bg-slate-800/80 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/50'
                           }`}
                           title={likedSongsMap && likedSongsMap[item.id] ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
                         >
-                          <Heart className={`w-3.5 h-3.5 ${likedSongsMap && likedSongsMap[item.id] ? 'fill-emerald-400 text-emerald-400' : ''}`} />
+                          <Heart className={`w-3 h-3 ${likedSongsMap && likedSongsMap[item.id] ? 'fill-emerald-400 text-emerald-400' : ''}`} />
                         </button>
                       </div>
                     )}

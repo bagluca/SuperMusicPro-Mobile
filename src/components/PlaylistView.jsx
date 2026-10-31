@@ -460,17 +460,17 @@ export default function PlaylistView({
                   </div>
 
                   {/* Actions centered immediately below in the card */}
-                  <div className="flex items-center justify-center space-x-6 mt-2 pt-1.5 border-t border-slate-800/40 w-full z-10">
+                  <div className="flex items-center justify-center space-x-4 mt-1.5 pt-1.5 border-t border-slate-800/40 w-full z-10">
                     {onOpenAddToPlaylist && (
                       <button
                         onClick={(e) => {
                           e.stopPropagation();
                           onOpenAddToPlaylist(track);
                         }}
-                        className="w-9 h-8 rounded-lg bg-slate-800/70 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/60 shadow-sm"
+                        className="w-7 h-7 rounded-md bg-slate-800/70 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/50 shadow-sm"
                         title="Aggiungi ad altra playlist"
                       >
-                        <Plus className="w-4 h-4" />
+                        <Plus className="w-3.5 h-3.5" />
                       </button>
                     )}
 
@@ -480,14 +480,14 @@ export default function PlaylistView({
                           e.stopPropagation();
                           onToggleLike(track);
                         }}
-                        className={`w-9 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border shadow-sm ${
+                        className={`w-7 h-7 rounded-md active:scale-90 flex items-center justify-center transition-all border shadow-sm ${
                           isLiked
                             ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                            : 'bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/60'
+                            : 'bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/50'
                         }`}
                         title={isLiked ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
                       >
-                        <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-emerald-400 text-emerald-400' : ''}`} />
+                        <Heart className={`w-3 h-3 ${isLiked ? 'fill-emerald-400 text-emerald-400' : ''}`} />
                       </button>
                     )}
 
@@ -500,10 +500,10 @@ export default function PlaylistView({
                           onRemoveTrackFromPlaylist(playlist.id, track);
                         }
                       }}
-                      className="w-9 h-8 rounded-lg bg-slate-800/70 hover:bg-rose-500/20 active:scale-90 flex items-center justify-center text-rose-400/90 hover:text-rose-400 transition-all border border-slate-700/60 hover:border-rose-500/40 shadow-sm"
+                      className="w-7 h-7 rounded-md bg-slate-800/70 hover:bg-rose-500/20 active:scale-90 flex items-center justify-center text-rose-400/90 hover:text-rose-400 transition-all border border-slate-700/50 hover:border-rose-500/40 shadow-sm"
                       title={isLikedView ? 'Rimuovi dai brani preferiti' : 'Rimuovi da questa playlist'}
                     >
-                      <Trash2 className="w-3.5 h-3.5" />
+                      <Trash2 className="w-3 h-3" />
                     </button>
                   </div>
                 </div>

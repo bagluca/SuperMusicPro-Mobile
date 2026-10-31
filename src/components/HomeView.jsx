@@ -318,36 +318,36 @@ export default function HomeView({
                   </div>
                 </div>
 
-                {/* Tactile Action Buttons centered immediately below in the card */}
-                <div className="flex items-center justify-center space-x-6 pt-1.5 border-t border-slate-800/40 w-full z-10">
+                {/* Compact Tactile Action Buttons centered immediately below in the card */}
+                <div className="flex items-center justify-center space-x-4 pt-1.5 border-t border-slate-800/40 w-full z-10">
                   {onOpenAddToPlaylist && (
                     <button
                       onClick={(e) => {
                         e.stopPropagation();
                         onOpenAddToPlaylist(track);
                       }}
-                      className="w-9 h-8 rounded-lg bg-slate-800/70 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/60"
+                      className="w-7 h-7 rounded-md bg-slate-800/70 hover:bg-slate-700 active:scale-90 flex items-center justify-center text-slate-400 hover:text-white transition-all border border-slate-700/50"
                       title="Aggiungi a una playlist"
                     >
-                      <Plus className="w-4 h-4" />
+                      <Plus className="w-3.5 h-3.5" />
                     </button>
                   )}
 
                   <button
                     onClick={(e) => handleDownload(track, e)}
-                    className={`w-9 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border ${
+                    className={`w-7 h-7 rounded-md active:scale-90 flex items-center justify-center transition-all border ${
                       dlState === 'done'
                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40'
-                        : 'bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/60'
+                        : 'bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/50'
                     }`}
                     title="Scarica per ascolto offline"
                   >
                     {dlState === 'loading' ? (
-                      <RefreshCw className="w-3.5 h-3.5 text-emerald-400 animate-spin" />
+                      <RefreshCw className="w-3 h-3 text-emerald-400 animate-spin" />
                     ) : dlState === 'done' ? (
-                      <Check className="w-3.5 h-3.5 text-emerald-400" />
+                      <Check className="w-3 h-3 text-emerald-400" />
                     ) : (
-                      <Download className="w-3.5 h-3.5" />
+                      <Download className="w-3 h-3" />
                     )}
                   </button>
 
@@ -356,14 +356,14 @@ export default function HomeView({
                       e.stopPropagation();
                       onToggleLike(track);
                     }}
-                    className={`w-9 h-8 rounded-lg active:scale-90 flex items-center justify-center transition-all border ${
+                    className={`w-7 h-7 rounded-md active:scale-90 flex items-center justify-center transition-all border ${
                       isLiked
                         ? 'bg-emerald-500/20 text-emerald-400 border-emerald-500/40 shadow-[0_0_8px_rgba(16,185,129,0.25)]'
-                        : 'bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/60'
+                        : 'bg-slate-800/70 hover:bg-slate-700 text-slate-400 hover:text-emerald-400 border-slate-700/50'
                     }`}
                     title={isLiked ? 'Rimuovi dai preferiti' : 'Aggiungi ai preferiti'}
                   >
-                    <Heart className={`w-3.5 h-3.5 ${isLiked ? 'fill-emerald-400 text-emerald-400' : ''}`} />
+                    <Heart className={`w-3 h-3 ${isLiked ? 'fill-emerald-400 text-emerald-400' : ''}`} />
                   </button>
                 </div>
               </div>

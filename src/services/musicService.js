@@ -269,7 +269,7 @@ function parseRenderer(renderer, forcedType = null, parentContextArtist = null) 
   let detectedType = null;
   let artist = null;
   let album = null;
-  let duration = 180;
+  let duration = null;
   let durStr = null;
 
   // Analyze every run in flexColumns[1]
@@ -322,6 +322,47 @@ function parseRenderer(renderer, forcedType = null, parentContextArtist = null) 
     }
   }
 
+  // Check additional flexColumns for duration if not yet found
+  if (!durStr && flexColumns.length > 2) {
+    for (let c = 2; c < flexColumns.length; c++) {
+      const cRuns = flexColumns[c]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
+      for (const r of cRuns) {
+        const raw = (r.text || '').trim();
+        if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(raw)) {
+          durStr = raw;
+          duration = parseDurationString(raw);
+          break;
+        }
+      }
+      if (durStr) break;
+    }
+  }
+
+  // Check fixedColumns for duration (standard YouTube Music position for albums/artists)
+  if (!durStr && renderer.fixedColumns) {
+    for (const fc of renderer.fixedColumns) {
+      const fcRuns = fc?.musicResponsiveListItemFixedColumnRenderer?.text?.runs || [];
+      for (const r of fcRuns) {
+        const raw = (r.text || '').trim();
+        if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(raw)) {
+          durStr = raw;
+          duration = parseDurationString(raw);
+          break;
+        }
+      }
+      if (durStr) break;
+    }
+  }
+
+  // Check lengthText
+  if (!durStr && renderer.lengthText) {
+    const raw = (renderer.lengthText.runs?.[0]?.text || renderer.lengthText.simpleText || '').trim();
+    if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(raw)) {
+      durStr = raw;
+      duration = parseDurationString(raw);
+    }
+  }
+
   // Determine resultType (Traccia, Artista, Album) - solely for Search filtering & badges
   let resultType = 'track';
   let typeLabel = 'Traccia';
@@ -366,8 +407,8 @@ function parseRenderer(renderer, forcedType = null, parentContextArtist = null) 
     artist,
     album,
     cover: cover || DEFAULT_ALBUM_COVER,
-    duration,
-    formattedDuration: durStr || formatDuration(duration),
+    duration: duration || 0,
+    formattedDuration: durStr || (duration ? formatDuration(duration) : null),
     source: 'YouTube Music'
   };
 }
@@ -616,6 +657,20 @@ export const musicService = {
               if (topTitle) {
                 const thumbs = card.thumbnail?.musicThumbnailRenderer?.thumbnail?.thumbnails || [];
                 const topCover = thumbs.length > 0 ? thumbs[thumbs.length - 1].url : DEFAULT_ALBUM_COVER;
+
+                // Extract exact duration from card.subtitle runs if available
+                let cardDurStr = null;
+                let cardDuration = 0;
+                const cardSubRuns = card.subtitle?.runs || [];
+                for (const r of cardSubRuns) {
+                  const raw = (r.text || '').trim();
+                  if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(raw)) {
+                    cardDurStr = raw;
+                    cardDuration = parseDurationString(raw);
+                    break;
+                  }
+                }
+
                 results.push({
                   id: topVid ? `yt_${topVid}` : (topBrowseId ? `yt_${topBrowseId}` : `yt_${topTitle}`),
                   videoId: topVid,
@@ -627,8 +682,8 @@ export const musicService = {
                   artist: cardArtist,
                   album: isAlbum ? topTitle : 'Top Hit',
                   cover: topCover,
-                  duration: 180,
-                  formattedDuration: '3:00',
+                  duration: cardDuration,
+                  formattedDuration: cardDurStr,
                   source: 'YouTube Music'
                 });
               }
@@ -743,7 +798,7 @@ export const musicService = {
             const col1 = item.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
             
             let trackArtist = albumArtist || '';
-            let durStr = '3:00';
+            let durStr = null;
             for (const r of col1) {
               const text = (r.text || '').trim();
               if (!text || text === '•') continue;
@@ -751,6 +806,19 @@ export const musicService = {
                 durStr = text;
               } else if (!TYPE_WORDS.has(text.toLowerCase()) && !trackArtist) {
                 trackArtist = text;
+              }
+            }
+            if (!durStr && item.fixedColumns) {
+              for (const fc of item.fixedColumns) {
+                const fcRuns = fc?.musicResponsiveListItemFixedColumnRenderer?.text?.runs || [];
+                for (const r of fcRuns) {
+                  const text = (r.text || '').trim();
+                  if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(text)) {
+                    durStr = text;
+                    break;
+                  }
+                }
+                if (durStr) break;
               }
             }
 
@@ -767,7 +835,7 @@ export const musicService = {
                 artist: trackArtist || albumArtist || 'Artista',
                 album: albumTitle || 'Album',
                 cover: cover || DEFAULT_ALBUM_COVER,
-                duration: parseDurationString(durStr),
+                duration: durStr ? parseDurationString(durStr) : 0,
                 formattedDuration: durStr,
                 source: 'YouTube Music'
               });
@@ -809,7 +877,7 @@ export const musicService = {
             const col1 = item.flexColumns?.[1]?.musicResponsiveListItemFlexColumnRenderer?.text?.runs || [];
             
             let trackArtist = artistName || '';
-            let durStr = '3:00';
+            let durStr = null;
             for (const r of col1) {
               const text = (r.text || '').trim();
               if (!text || text === '•') continue;
@@ -817,6 +885,19 @@ export const musicService = {
                 durStr = text;
               } else if (!TYPE_WORDS.has(text.toLowerCase()) && !trackArtist) {
                 trackArtist = text;
+              }
+            }
+            if (!durStr && item.fixedColumns) {
+              for (const fc of item.fixedColumns) {
+                const fcRuns = fc?.musicResponsiveListItemFixedColumnRenderer?.text?.runs || [];
+                for (const r of fcRuns) {
+                  const text = (r.text || '').trim();
+                  if (/^\d{1,2}:\d{2}(?::\d{2})?$/.test(text)) {
+                    durStr = text;
+                    break;
+                  }
+                }
+                if (durStr) break;
               }
             }
 
@@ -833,7 +914,7 @@ export const musicService = {
                 artist: trackArtist || artistName || 'Artista',
                 album: 'Top Hit',
                 cover: cover || DEFAULT_ALBUM_COVER,
-                duration: parseDurationString(durStr),
+                duration: durStr ? parseDurationString(durStr) : 0,
                 formattedDuration: durStr,
                 source: 'YouTube Music'
               });
